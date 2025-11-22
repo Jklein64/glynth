@@ -9,35 +9,39 @@
 
 namespace glynth {
 
-struct Move {
-  inline static int degree = 0;
-  Move(FT_Vector p0, FT_Vector p1);
-  glm::vec2 sample(float t) const;
-  glm::vec2 p0, p1;
+struct Segment {
+  virtual ~Segment() = default;
+  virtual glm::vec2 sample(float t) const = 0;
+  virtual std::string svg_str() const = 0;
 };
 
-struct Line {
-  inline static int degree = 1;
+struct Move : public Segment {
+  Move(FT_Vector p);
+  glm::vec2 sample(float t) const override;
+  std::string svg_str() const override;
+  glm::vec2 p;
+};
+
+struct Line : public Segment {
   Line(FT_Vector p0, FT_Vector p1);
-  glm::vec2 sample(float t) const;
+  glm::vec2 sample(float t) const override;
+  std::string svg_str() const override;
   glm::vec2 p0, p1;
 };
 
-struct Quadratic {
-  inline static int degree = 2;
+struct Quadratic : public Segment {
   Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1);
-  glm::vec2 sample(float t) const;
+  glm::vec2 sample(float t) const override;
+  std::string svg_str() const override;
   glm::vec2 p0, c0, p1;
 };
 
-struct Cubic {
-  inline static int degree = 3;
+struct Cubic : public Segment {
   Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1);
-  glm::vec2 sample(float t) const;
+  glm::vec2 sample(float t) const override;
+  std::string svg_str() const override;
   glm::vec2 p0, c0, c1, p1;
 };
-
-using Segment = std::variant<Move, Line, Quadratic, Cubic>;
 
 struct BoundingBox {
   BoundingBox();
@@ -49,13 +53,13 @@ struct BoundingBox {
 
 class Outline {
 public:
-  Outline(std::vector<Segment> segments, BoundingBox bbox);
-  const std::vector<Segment> &segments() const;
+  Outline(std::vector<std::unique_ptr<Segment>> &&segments, BoundingBox bbox);
+  const std::vector<std::unique_ptr<Segment>> &segments() const;
   const BoundingBox &bbox() const;
   glm::vec2 sample(float t) const;
 
 private:
-  std::vector<Segment> m_segments;
+  std::vector<std::unique_ptr<Segment>> m_segments;
   BoundingBox m_bbox;
 };
 
