@@ -71,4 +71,10 @@ int main() {
         segment);
     started = true;
   }
+  fmt::print("\n\n");
+  for (size_t i = 0; i < 1000; i++) {
+    float t = static_cast<float>(i) / 1000;
+    auto sample = outline.sample(t);
+    fmt::println("{}, {}", sample.x, sample.y);
+  }
 }
