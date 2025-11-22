@@ -14,7 +14,11 @@ FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
     GIT_TAG 12.1.0)
-FetchContent_MakeAvailable(freetype fmt)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.2)
+FetchContent_MakeAvailable(freetype fmt glm)
 
-add_executable(read src/read.cpp)
-target_link_libraries(read PRIVATE freetype fmt::fmt)
+add_executable(read src/read.cpp src/outliner.cpp)
+target_link_libraries(read PRIVATE freetype fmt::fmt glm::glm)
