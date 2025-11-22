@@ -1,9 +1,11 @@
 #include <fmt/base.h>
+#include <fmt/format.h>
 #include <freetype/freetype.h>
 #include <freetype/ftbbox.h>
 #include <freetype/ftoutln.h>
 #include <ft2build.h>
-#include <iostream>
+#include <sstream>
+#include <string>
 
 int main() {
   FT_Error error;
@@ -22,12 +24,6 @@ int main() {
     exit(1);
   }
 
-  error = FT_Set_Char_Size(face, 0, 16 * 64, 300, 300);
-  if (error) {
-    fmt::println(stderr, "Failed to set char size");
-    exit(1);
-  }
-
   // Print some metadata about the face
   fmt::println("num_faces = {}", face->num_faces);
   fmt::println("num_glyphs = {}", face->num_glyphs);
@@ -37,67 +33,89 @@ int main() {
   fmt::println("size.x_ppem = {}", face->size->metrics.x_ppem);
   fmt::println("size.y_ppem = {}", face->size->metrics.y_ppem);
 
-  // Get glyph for letter J
-  error = FT_Load_Char(face, 0x004A, FT_LOAD_DEFAULT);
-  //   FT_UInt glyph_index = FT_Get_Char_Index(face, 0x004A);
-  //   error = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
-  if (error) {
-    fmt::println(stderr, "Failed to load glyph");
-    exit(1);
-  }
-
-  fmt::println("\nGlyph Info:");
-  fmt::println("face.glyph.format = {}",
-               static_cast<size_t>(face->glyph->format));
-  fmt::println(" - none: {}", static_cast<size_t>(FT_GLYPH_FORMAT_NONE));
-  fmt::println(" - composite: {}",
-               static_cast<size_t>(FT_GLYPH_FORMAT_COMPOSITE));
-  fmt::println(" - bitmap: {}", static_cast<size_t>(FT_GLYPH_FORMAT_BITMAP));
-  fmt::println(" - outline: {}", static_cast<size_t>(FT_GLYPH_FORMAT_OUTLINE));
-  fmt::println(" - plotter: {}", static_cast<size_t>(FT_GLYPH_FORMAT_PLOTTER));
-  fmt::println(" - svg: {}", static_cast<size_t>(FT_GLYPH_FORMAT_SVG));
-
-  // Walk the outline
-  auto outline = face->glyph->outline;
-  auto svg_funcs = (FT_Outline_Funcs){
-      .move_to =
-          [](const FT_Vector *to, void *user) {
-            fmt::print("M {},{} ", to->x, to->y);
-            return 0;
-          },
-      .line_to =
-          [](const FT_Vector *to, void *user) {
-            fmt::print("L {},{} ", to->x, to->y);
-            return 0;
-          },
-      // Note: "conic" refers to a second-order Bezier
-      .conic_to =
-          [](const FT_Vector *control, const FT_Vector *to, void *user) {
-            fmt::print("Q {},{} {},{} ", control->x, control->y, to->x, to->y);
-            return 0;
-          },
-      .cubic_to =
-          [](const FT_Vector *control1, const FT_Vector *control2,
-             const FT_Vector *to, void *user) {
-            fmt::print("C {},{} {},{} {},{} ", control1->x, control1->y,
-                       control2->x, control2->y, to->x, to->y);
-            return 0;
-          },
+  std::string text = "Glynth";
+  std::stringstream path_str_stream;
+  FT_Vector pen{0, 0};
+  FT_BBox text_cbox{
+      .xMin = std::numeric_limits<FT_Pos>::max(),
+      .yMin = std::numeric_limits<FT_Pos>::max(),
+      .xMax = std::numeric_limits<FT_Pos>::min(),
+      .yMax = std::numeric_limits<FT_Pos>::min(),
   };
-  fmt::println("\nOutline Info:");
-  fmt::println("n_points = {}", outline.n_points);
-  fmt::println("n_contours = {}", outline.n_contours);
-  fmt::println("decomposing outline...");
-  error = FT_Outline_Decompose(&outline, &svg_funcs, nullptr);
-  fmt::println("");
-  if (error) {
-    fmt::println(stderr, "Failed to decompose outline");
-    exit(1);
+  for (size_t i = 0; i < text.size(); i++) {
+    error = FT_Load_Char(face, text[i], FT_LOAD_DEFAULT);
+    if (error) {
+      fmt::println(stderr, "Failed to load glyph");
+      exit(1);
+    }
+    if (face->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
+      fmt::println(stderr, "Glyph was not an outline");
+      exit(1);
+    }
+
+    FT_Outline outline = face->glyph->outline;
+    struct user_t {
+      std::stringstream &ss;
+      FT_Vector &pen;
+    };
+    user_t user{path_str_stream, pen};
+
+    FT_Outline_Funcs funcs = (FT_Outline_Funcs){
+        .move_to =
+            [](const FT_Vector *to, void *user) {
+              auto &u = *static_cast<user_t *>(user);
+              auto data =
+                  fmt::format("M {},{} ", to->x + u.pen.x, to->y + u.pen.y);
+              u.ss.write(data.c_str(), data.size());
+              return 0;
+            },
+        .line_to =
+            [](const FT_Vector *to, void *user) {
+              auto &u = *static_cast<user_t *>(user);
+              auto data =
+                  fmt::format("L {},{} ", to->x + u.pen.x, to->y + u.pen.y);
+              u.ss.write(data.c_str(), data.size());
+              return 0;
+            },
+        // Note: "conic" refers to a second-order Bezier
+        .conic_to =
+            [](const FT_Vector *control, const FT_Vector *to, void *user) {
+              auto &u = *static_cast<user_t *>(user);
+              auto data = fmt::format("Q {},{} {},{} ", control->x + u.pen.x,
+                                      control->y + u.pen.y, to->x + u.pen.x,
+                                      to->y + u.pen.y);
+              u.ss.write(data.c_str(), data.size());
+              return 0;
+            },
+        .cubic_to =
+            [](const FT_Vector *control1, const FT_Vector *control2,
+               const FT_Vector *to, void *user) {
+              auto &u = *static_cast<user_t *>(user);
+              auto data = fmt::format(
+                  "C {},{} {},{} {},{} ", control1->x + u.pen.x,
+                  control1->y + u.pen.y, control2->x + u.pen.x,
+                  control2->y + u.pen.y, to->x + u.pen.x, to->y + u.pen.y);
+              u.ss.write(data.c_str(), data.size());
+              return 0;
+            },
+    };
+    error = FT_Outline_Decompose(&outline, &funcs, &user);
+    if (error) {
+      fmt::println(stderr, "Failed to decompose outline");
+      exit(1);
+    }
+
+    FT_BBox cbox;
+    FT_Outline_Get_CBox(&outline, &cbox);
+    text_cbox.xMin = std::min(text_cbox.xMin, cbox.xMin + pen.x);
+    text_cbox.yMin = std::min(text_cbox.yMin, cbox.yMin + pen.y);
+    text_cbox.xMax = std::max(text_cbox.xMax, cbox.xMax + pen.x);
+    text_cbox.yMax = std::max(text_cbox.yMax, cbox.yMax + pen.y);
+    pen.x += face->glyph->advance.x;
+    pen.y += face->glyph->advance.y;
   }
-
-  FT_BBox bbox;
-  FT_Outline_Get_CBox(&outline, &bbox);
-
-  fmt::println("viewBox = {} {} {} {}", bbox.xMin, bbox.yMin,
-               bbox.xMax - bbox.xMin, bbox.yMax - bbox.yMin);
+  fmt::println("{}", path_str_stream.str());
+  fmt::println("viewBox = {} {} {} {}", text_cbox.xMin, text_cbox.yMin,
+               text_cbox.xMax - text_cbox.xMin,
+               text_cbox.yMax - text_cbox.yMin);
 }
