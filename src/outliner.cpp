@@ -106,7 +106,24 @@ void BoundingBox::expand(const BoundingBox &other) {
 // Outline
 Outline::Outline(std::vector<std::unique_ptr<Segment>> &&segments,
                  BoundingBox bbox)
-    : m_segments(std::move(segments)), m_bbox(bbox) {}
+    : m_segments(std::move(segments)), m_bbox(bbox) {
+  // See https://pomax.github.io/bezierinfo/#tracing
+  m_parameters.resize(m_samples);
+  m_distances.resize(m_samples, 0.0f);
+  for (size_t i = 0; i < m_samples; i++) {
+    m_parameters[i] = static_cast<float>(i) / (m_samples - 1);
+    // Clamp to within [0, 1) to ensure index is always valid
+    m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
+    float j_decimal = m_parameters[i] * m_segments.size();
+    size_t j = static_cast<size_t>(j_decimal);
+    // Add length of all segments coming before segment j
+    for (size_t k = 0; k < j; k++) {
+      m_distances[i] += m_segments[k]->length();
+    }
+    // Add length of the part of segment j included by parameter
+    m_distances[i] += m_segments[j]->length(j_decimal - j);
+  }
+}
 
 const std::vector<std::unique_ptr<Segment>> &Outline::segments() const {
   return m_segments;
@@ -120,36 +137,18 @@ glm::vec2 Outline::sample(float t) const {
   for (auto &&segment : m_segments) {
     total_length += segment->length();
   }
-  // TODO take this computation out of the sample function!
-  constexpr size_t n_samples = 10000;
-  std::vector<float> parameters(n_samples);
-  std::vector<float> distances(n_samples);
-  for (size_t i = 0; i < n_samples; i++) {
-    parameters[i] = static_cast<float>(i) / (n_samples - 1);
-    // Clamp to within [0, 1) to ensure index is always valid
-    parameters[i] = std::min(parameters[i], std::nextafterf(1.0f, 0.0f));
-    distances[i] = 0.0f;
-    float j_decimal = parameters[i] * m_segments.size();
-    size_t j = static_cast<size_t>(j_decimal);
-    // Add length of all segments coming before segment j
-    for (size_t k = 0; k < j; k++) {
-      distances[i] += m_segments[k]->length();
-    }
-    // Add length of the part of segment j included by parameter
-    distances[i] += m_segments[j]->length(j_decimal - j);
-  }
   // Find the i such that distances[i] = t * total_length
   size_t i_best = 0;
   float v_best = std::numeric_limits<float>::infinity();
-  for (size_t i = 0; i < n_samples; i++) {
-    float v = std::abs(distances[i] - t * total_length);
+  for (size_t i = 0; i < m_samples; i++) {
+    float v = std::abs(m_distances[i] - t * total_length);
     if (v < v_best) {
       i_best = i;
       v_best = v;
     }
   }
   // Do the naive sampling with t = parameters[i_best]
-  float j_decimal = parameters[i_best] * m_segments.size();
+  float j_decimal = m_parameters[i_best] * m_segments.size();
   size_t j = static_cast<size_t>(j_decimal);
   return m_segments[j]->sample(j_decimal - j);
 }
