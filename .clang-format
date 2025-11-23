@@ -1,5 +1,4 @@
 # Exported defaults with `clang-format --dump-config > .clang-format` and then modified
----
 Language: Cpp
 BasedOnStyle: LLVM
 AccessModifierOffset: -2
@@ -243,5 +242,3 @@ WhitespaceSensitiveMacros:
   - NS_SWIFT_NAME
   - PP_STRINGIZE
   - STRINGIZE
----
-
