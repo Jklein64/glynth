@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(glynth VERSION 0.0.1 LANGUAGES C CXX)
 
-# Force C++20 for sanity
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 include(FetchContent)
 FetchContent_Declare(
     freetype
@@ -43,22 +39,28 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Gperftools COMPONENTS PROFILER)
 
 add_executable(read src/read.cpp src/outliner.cpp)
+target_compile_features(read PRIVATE cxx_std_20)
 target_link_libraries(
     read
     PRIVATE freetype fmt::fmt glm::glm npy::npy ${Gperftools_LIBRARIES}
 )
 
-juce_add_plugin(glynth
-    IS_SYNTH TRUE
-    NEEDS_MIDI_INPUT TRUE
+juce_add_plugin(
+    glynth
+    COMPANY_NAME "Jason Klein"
+    BUNDLE_ID "com.jklein.glynth"
+    COPY_PLUGIN_AFTER_BUILD TRUE
     PLUGIN_MANUFACTURER_CODE Jk64
     PLUGIN_CODE Glyn
-
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT TRUE
     FORMATS AU Standalone
     PRODUCT_NAME glynth
 )
 
 target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
+target_compile_features(glynth PRIVATE cxx_std_20)
 target_compile_definitions(
     glynth
     PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
