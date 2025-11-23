@@ -12,7 +12,10 @@ namespace glynth {
 struct Segment {
   friend class Outliner;
 
-  Segment(std::initializer_list<FT_Vector> points);
+  Segment(FT_Vector p0);
+  Segment(FT_Vector p0, FT_Vector p1);
+  Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2);
+  Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3);
   float length(float t = 1) const;
   glm::vec2 sample(float t) const;
   std::string svg_str() const;

@@ -8,15 +8,37 @@
 namespace glynth {
 
 // Segment
-Segment::Segment(std::initializer_list<FT_Vector> points)
-    : m_order(points.size() - 1) {
-  assert(0 < points.size() && points.size() <= 4);
-  m_points.reserve(points.size());
-  for (auto &&point : points) {
-    float x = static_cast<float>(point.x) / 64;
-    float y = static_cast<float>(point.y) / 64;
-    m_points.emplace_back(x, y);
-  }
+Segment::Segment(FT_Vector p0) : m_order(0) {
+  m_points.emplace_back(static_cast<float>(p0.x) / 64,
+                        static_cast<float>(p0.y) / 64);
+}
+
+Segment::Segment(FT_Vector p0, FT_Vector p1) : m_order(1) {
+  m_points.emplace_back(static_cast<float>(p0.x) / 64,
+                        static_cast<float>(p0.y) / 64);
+  m_points.emplace_back(static_cast<float>(p1.x) / 64,
+                        static_cast<float>(p1.y) / 64);
+}
+
+Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2) : m_order(2) {
+  m_points.emplace_back(static_cast<float>(p0.x) / 64,
+                        static_cast<float>(p0.y) / 64);
+  m_points.emplace_back(static_cast<float>(p1.x) / 64,
+                        static_cast<float>(p1.y) / 64);
+  m_points.emplace_back(static_cast<float>(p2.x) / 64,
+                        static_cast<float>(p2.y) / 64);
+}
+
+Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3)
+    : m_order(3) {
+  m_points.emplace_back(static_cast<float>(p0.x) / 64,
+                        static_cast<float>(p0.y) / 64);
+  m_points.emplace_back(static_cast<float>(p1.x) / 64,
+                        static_cast<float>(p1.y) / 64);
+  m_points.emplace_back(static_cast<float>(p2.x) / 64,
+                        static_cast<float>(p2.y) / 64);
+  m_points.emplace_back(static_cast<float>(p3.x) / 64,
+                        static_cast<float>(p3.y) / 64);
 }
 
 float Segment::length(float t) const {
@@ -186,14 +208,14 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
     .move_to =
         [](const FT_Vector *to, void *user) {
           auto &u = *static_cast<UserData *>(user);
-          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p0 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
             // Replace all moves but the first with lines so text is continuous
-            u.segments.push_back(Segment({*u.p0, p1}));
+            u.segments.emplace_back(*u.p0, p0);
           } else {
-            u.segments.push_back(Segment({p1}));
+            u.segments.emplace_back(p0);
           }
-          u.p0 = p1;
+          u.p0 = p0;
           return 0;
         },
     .line_to =
@@ -201,7 +223,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
           auto &u = *static_cast<UserData *>(user);
           FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            u.segments.push_back(Segment({*u.p0, p1}));
+            u.segments.emplace_back(*u.p0, p1);
           }
           u.p0 = p1;
           return 0;
@@ -212,7 +234,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
           FT_Vector p2 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
             FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-            u.segments.push_back(Segment({*u.p0, p1, p2}));
+            u.segments.emplace_back(*u.p0, p1, p2);
           }
           u.p0 = p2;
           return 0;
@@ -225,7 +247,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
           if (u.p0.has_value()) {
             FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
             FT_Vector p2 = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
-            u.segments.push_back(Segment({*u.p0, p1, p2, p3}));
+            u.segments.emplace_back(*u.p0, p1, p2, p3);
           }
           u.p0 = p3;
           return 0;
