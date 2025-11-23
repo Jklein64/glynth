@@ -28,6 +28,19 @@ int main() {
     exit(1);
   }
 
+  // Set character size
+  error = FT_Set_Pixel_Sizes(face, 16 * 64, 16 * 64);
+  if (error) {
+    fmt::println(stderr, "Failed to set char size");
+    exit(1);
+  }
+
+  // Print some metadata about the face
+  fmt::println("glyph.width = {}", face->glyph->metrics.width);
+  fmt::println("glyph.height = {}", face->glyph->metrics.height);
+  fmt::println("size.x_scale = {}", face->size->metrics.x_scale);
+  fmt::println("size.y_scale = {}", face->size->metrics.y_scale);
+
   glynth::Outliner outliner(library);
   auto outline = outliner.outline("Glynth");
   // Save to svg file for preview
@@ -35,7 +48,7 @@ int main() {
   auto bbox = outline.bbox();
   fmt::print(svg_file,
              R"(<svg viewBox="{} {} {} {}" xmlns="http://www.w3.org/2000/svg">)"
-             R"(<path stroke="black" fill="white" d="{}" /></svg>)",
+             R"(<path stroke="black" fill="none" d="{}" /></svg>)",
              bbox.min.x, bbox.min.y, bbox.max.x - bbox.min.x,
              bbox.max.y - bbox.min.y, outline.svg_str());
 

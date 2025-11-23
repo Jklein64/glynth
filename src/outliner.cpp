@@ -8,7 +8,8 @@
 namespace glynth {
 
 // Move
-Move::Move(FT_Vector p) : p(p.x, p.y) {}
+Move::Move(FT_Vector p)
+    : p(static_cast<float>(p.x) / 64, static_cast<float>(p.y) / 64) {}
 
 float Move::length(float t) const { return 0.0f; }
 
@@ -17,7 +18,9 @@ glm::vec2 Move::sample(float t) const { return p; }
 std::string Move::svg_str() const { return fmt::format("M {},{}", p.x, p.y); }
 
 // Line
-Line::Line(FT_Vector p0, FT_Vector p1) : p0(p0.x, p0.y), p1(p1.x, p1.y) {}
+Line::Line(FT_Vector p0, FT_Vector p1)
+    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
+      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
 
 float Line::length(float t) const {
   assert(0 <= t && t <= 1);
@@ -34,7 +37,9 @@ std::string Line::svg_str() const { return fmt::format("L {},{}", p1.x, p1.y); }
 
 // Quadratic
 Quadratic::Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1)
-    : p0(p0.x, p0.y), c0(c0.x, c0.y), p1(p1.x, p1.y) {}
+    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
+      c0(static_cast<float>(c0.x) / 64, static_cast<float>(c0.y) / 64),
+      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
 
 float Quadratic::length(float t) const {
   float length = 0.0f;
@@ -61,7 +66,10 @@ std::string Quadratic::svg_str() const {
 
 // Cubic
 Cubic::Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1)
-    : p0(p0.x, p0.y), c0(c0.x, c0.y), c1(c1.x, c1.y), p1(p1.x, p1.y) {}
+    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
+      c0(static_cast<float>(c0.x) / 64, static_cast<float>(c0.y) / 64),
+      c1(static_cast<float>(c1.x) / 64, static_cast<float>(c1.y) / 64),
+      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
 
 float Cubic::length(float t) const {
   float length = 0.0f;
@@ -96,7 +104,10 @@ BoundingBox::BoundingBox()
           -std::numeric_limits<float>::infinity()) {}
 
 BoundingBox::BoundingBox(FT_BBox bbox)
-    : min(bbox.xMin, bbox.yMin), max(bbox.xMax, bbox.yMax) {}
+    : min(static_cast<float>(bbox.xMin) / 64,
+          static_cast<float>(bbox.yMin) / 64),
+      max(static_cast<float>(bbox.xMax) / 64,
+          static_cast<float>(bbox.yMax) / 64) {}
 
 void BoundingBox::expand(const BoundingBox &other) {
   min = glm::min(min, other.min);
