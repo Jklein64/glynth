@@ -3,8 +3,7 @@
 
 //==============================================================================
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
-    : AudioProcessorEditor(&p), processorRef(p) {
-  juce::ignoreUnused(processorRef);
+    : AudioProcessorEditor(&p), processor_ref(p) {
   // Make sure that before the constructor has finished, you've set the
   // editor's size to whatever you need it to be.
   setSize(400, 300);
