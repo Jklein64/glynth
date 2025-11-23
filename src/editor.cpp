@@ -4,27 +4,34 @@
 //==============================================================================
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p) {
-  // Make sure that before the constructor has finished, you've set the
-  // editor's size to whatever you need it to be.
+  // Must set size for window to show properly
   setSize(400, 300);
+  addAndMakeVisible(m_opengl_component);
 }
 
 GlynthEditor::~GlynthEditor() {}
 
 //==============================================================================
-void GlynthEditor::paint(juce::Graphics& g) {
-  // (Our component is opaque, so we must completely fill the background with a
-  // solid colour)
-  g.fillAll(
-      getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-
-  g.setColour(juce::Colours::white);
-  g.setFont(15.0f);
-  g.drawFittedText("Hello World!", getLocalBounds(),
-                   juce::Justification::centred, 1);
+void GlynthEditor::paint(juce::Graphics&) {
+  // Only the OpenGlComponent for now, but this will have controls later
 }
 
-void GlynthEditor::resized() {
-  // This is generally where you'll want to lay out the positions of any
-  // subcomponents in your editor..
+void GlynthEditor::resized() { m_opengl_component.setBounds(getLocalBounds()); }
+
+//==============================================================================
+OpenGlComponent::OpenGlComponent() {
+  setOpaque(true);
+  m_context.setRenderer(this);
+  m_context.setContinuousRepainting(true);
+  m_context.attachTo(*this);
 }
+
+OpenGlComponent::~OpenGlComponent() { m_context.detach(); }
+
+void OpenGlComponent::paint(juce::Graphics&) {}
+
+void OpenGlComponent::newOpenGLContextCreated() {}
+
+void OpenGlComponent::renderOpenGL() {}
+
+void OpenGlComponent::openGLContextClosing() {}

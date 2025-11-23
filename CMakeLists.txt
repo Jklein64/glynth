@@ -67,7 +67,7 @@ target_compile_definitions(
 )
 target_link_libraries(
     glynth
-    PRIVATE juce::juce_audio_utils fmt::fmt
+    PRIVATE juce::juce_audio_utils juce::juce_opengl fmt::fmt
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
