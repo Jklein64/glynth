@@ -23,6 +23,7 @@ void GlynthEditor::resized() { m_opengl_component.setBounds(getLocalBounds()); }
 //==============================================================================
 OpenGlComponent::OpenGlComponent() {
   setOpaque(true);
+  m_context.setOpenGLVersionRequired(juce::OpenGLContext::openGL3_2);
   m_context.setRenderer(this);
   m_context.setContinuousRepainting(true);
   m_context.attachTo(*this);
@@ -62,84 +63,44 @@ void OpenGlComponent::newOpenGLContextCreated() {
   m_index_buffer = {0, 1, 2, 0, 2, 3};
 
   m_context.extensions.glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  m_context.extensions.glBufferData(GL_ARRAY_BUFFER,
-                                    sizeof(Vertex) * m_vertex_buffer.size(),
-                                    m_vertex_buffer.data(), GL_STATIC_DRAW);
+  m_context.extensions.glBufferData(
+      GL_ARRAY_BUFFER,
+      static_cast<GLsizeiptr>(sizeof(Vertex) * m_vertex_buffer.size()),
+      m_vertex_buffer.data(), GL_STATIC_DRAW);
 
   m_context.extensions.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
   m_context.extensions.glBufferData(
-      GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * m_index_buffer.size(),
+      GL_ELEMENT_ARRAY_BUFFER,
+      static_cast<GLsizeiptr>(sizeof(uint32_t) * m_index_buffer.size()),
       m_index_buffer.data(), GL_STATIC_DRAW);
 
-  // std::string vertex_shader =
-  //     R"(
-  //           #version 330 core
+  std::string vertex_shader = R"(
+    #version 330 core
+    layout (location = 0) in vec2 aPos; // the position variable has attribute position 0
+    layout (location = 1) in vec4 source_color;
 
-  //           // Input attributes.
-  //           in vec4 position;
-  //           in vec4 sourceColour;
+    out vec4 vertexColor; // specify a color output to the fragment shader
 
-  //           // Output to fragment shader.
-  //           out vec4 fragColour;
+    void main() {
+      gl_Position = vec4(aPos, 0.0, 1.0); // see how we directly give a vec2 to vec4's constructor
+      vertexColor = source_color; // vec4(0.5, 0.0, 0.0, 1.0); // set the output variable to a dark-red color
+    }
+  )";
 
-  //           void main()
-  //           {
-  //               // Set the position to the attribute we passed in.
-  //               gl_Position = position;
+  std::string fragment_shader = R"(
+    #version 330 core
+    out vec4 FragColor;
 
-  //               // Set the frag colour to the attribute we passed in.
-  //               // This value will be interpolated for us before the fragment
-  //               // shader so the colours we defined ateach vertex will create
-  //               a
-  //               // gradient across the shape.
-  //               fragColour = sourceColour;
-  //           }
-  //       )";
+    in vec4 vertexColor; // the input variable from the vertex shader (same name and same type)
 
-  // std::string fragment_shader =
-  //     R"(
-  //           #version 330 core
-
-  //           // The value that was output by the vertex shader.
-  //           // This MUST have the exact same name that we used in the vertex
-  //           shader. in vec4 fragColour;
-
-  //           void main()
-  //           {
-  //               // Set the fragment's colour to the attribute passed in by
-  //               the
-  //               // vertex shader.
-  //               gl_FragColor = fragColour;
-  //           }
-  //       )";
-
-  const char* vertex_shader = R"(
-                   attribute vec4 position;
-                   void main()
-                   {
-                       gl_Position = position;
-                   }
-               )";
-
-  const char* fragment_shader = R"(
-                   void main()
-                   {
-                       gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red color
-                   }
-               )";
-
-  auto translated_vertex_shader =
-      juce::OpenGLHelpers::translateVertexShaderToV3(vertex_shader);
-  fmt::println("Translated vertex shader: {}",
-               translated_vertex_shader.toStdString());
-  auto translated_fragment_shader =
-      juce::OpenGLHelpers::translateFragmentShaderToV3(fragment_shader);
-  fmt::println("Translated fragment shader: {}",
-               translated_fragment_shader.toStdString());
+    void main() {
+      FragColor = vertexColor;
+    }
+  )";
 
   m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
-  if (m_shader_program->addVertexShader(translated_vertex_shader) &&
-      m_shader_program->addFragmentShader(translated_fragment_shader) &&
+  if (m_shader_program->addVertexShader(vertex_shader) &&
+      m_shader_program->addFragmentShader(fragment_shader) &&
       m_shader_program->link()) {
     m_shader_program->use();
   } else {
@@ -182,11 +143,12 @@ void OpenGlComponent::renderOpenGL() {
   );
   m_context.extensions.glEnableVertexAttribArray(1);
 
-  glDrawElements(GL_TRIANGLES,          // Tell OpenGL to render triangles.
-                 m_index_buffer.size(), // How many indices we have.
-                 GL_UNSIGNED_INT,       // What type our indices are.
-                 nullptr // We already gave OpenGL our indices so we don't
-                         // need to pass that again here, so pass nullptr.
+  glDrawElements(
+      GL_TRIANGLES, // Tell OpenGL to render triangles.
+      static_cast<GLsizei>(m_index_buffer.size()), // How many indices we have.
+      GL_UNSIGNED_INT,                             // What type our indices are.
+      nullptr // We already gave OpenGL our indices so we don't
+              // need to pass that again here, so pass nullptr.
   );
 
   m_context.extensions.glDisableVertexAttribArray(0);
