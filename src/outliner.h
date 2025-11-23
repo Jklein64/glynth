@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <freetype/freetype.h>
 #include <glm/glm.hpp>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -54,8 +55,9 @@ private:
 
 class Outliner {
 public:
-  Outliner();
-  Outline outline(std::string_view text);
+  Outliner(std::string_view font_path);
+  Outliner(std::span<const std::byte> font_data);
+  Outline outline(std::string_view text, uint32_t pixel_height);
 
 private:
   // Must explicitly initialize or linking fails

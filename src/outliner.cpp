@@ -211,7 +211,7 @@ glm::vec2 Outline::sample(float t) const {
 }
 
 // Outliner
-Outliner::Outliner() {
+Outliner::Outliner(std::string_view font_path) {
   // Initialize Freetype library
   if (s_library == nullptr) {
     FT_Error error = FT_Init_FreeType(&s_library);
@@ -220,13 +220,25 @@ Outliner::Outliner() {
     }
   }
 
-  std::string font_path = "/System/Library/Fonts/Supplemental/Arial.ttf";
-  FT_Error error = FT_New_Face(s_library, font_path.c_str(), 0, &m_face);
+  FT_Error error = FT_New_Face(s_library, font_path.data(), 0, &m_face);
   if (error) {
     throw FreetypeError(FT_Error_String(error));
   }
-  // Set character size
-  error = FT_Set_Pixel_Sizes(m_face, 0, 16);
+}
+
+// Useful for custom non-standard fonts that will be bundled as binary data
+Outliner::Outliner(std::span<const std::byte, std::dynamic_extent> font_data) {
+  // Initialize Freetype library
+  if (s_library == nullptr) {
+    FT_Error error = FT_Init_FreeType(&s_library);
+    if (error) {
+      throw FreetypeError(FT_Error_String(error));
+    }
+  }
+
+  FT_Error error = FT_New_Memory_Face(
+      s_library, reinterpret_cast<const FT_Byte *>(font_data.data()),
+      font_data.size(), 0, &m_face);
   if (error) {
     throw FreetypeError(FT_Error_String(error));
   }
@@ -291,7 +303,12 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
         },
 };
 
-Outline Outliner::outline(std::string_view text) {
+Outline Outliner::outline(std::string_view text, uint32_t pixel_height) {
+  FT_Error error = FT_Set_Pixel_Sizes(m_face, 0, 16);
+  if (error) {
+    throw FreetypeError(FT_Error_String(error));
+  }
+
   std::vector<Segment> segments;
   FT_Vector pen{.x = 0, .y = 0};
   BoundingBox bbox;

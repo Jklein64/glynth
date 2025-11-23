@@ -12,8 +12,16 @@
 #include <string>
 
 int main() {
-  glynth::Outliner outliner;
-  auto outline = outliner.outline("Glynth");
+  // See https://codereview.stackexchange.com/a/22907
+  std::ifstream font_stream("/System/Library/Fonts/Supplemental/Arial.ttf",
+                            std::ios::binary | std::ios::ate);
+  // Get the current position of the stream pointer, which is at the end
+  std::ifstream::pos_type pos = font_stream.tellg();
+  std::vector<std::byte> font_data(pos);
+  font_stream.seekg(std::ifstream::beg);
+  font_stream.read(reinterpret_cast<char *>(font_data.data()), pos);
+  glynth::Outliner outliner(font_data);
+  auto outline = outliner.outline("Glynth", 16);
   // Save to svg file for preview
   std::ofstream svg_file("./out/outline.svg");
   auto bbox = outline.bbox();
