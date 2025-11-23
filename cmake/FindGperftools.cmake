@@ -56,7 +56,7 @@ find_library(
     PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
 )
 if(NOT Gperftools_TCMALLOC_NOTFOUND)
-    set(${libvar}_FOUND TRUE)
+    set(Gperftools_TCMALLOC_FOUND TRUE)
 endif()
 
 find_library(
@@ -69,7 +69,7 @@ find_library(
     PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
 )
 if(NOT Gperftools_PROFILER_NOTFOUND)
-    set(${libvar}_FOUND TRUE)
+    set(Gperftools_PROFILER_FOUND TRUE)
 endif()
 
 find_library(
@@ -82,7 +82,7 @@ find_library(
     PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
 )
 if(NOT Gperftools_TCMALLOC_MINIMAL_NOTFOUND)
-    set(${libvar}_FOUND TRUE)
+    set(Gperftools_TCMALLOC_MINIMAL_FOUND TRUE)
 endif()
 
 find_library(
@@ -95,7 +95,7 @@ find_library(
     PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
 )
 if(NOT Gperftools_TCMALLOC_AND_PROFILER_NOTFOUND)
-    set(${libvar}_FOUND TRUE)
+    set(Gperftools_TCMALLOC_AND_PROFILER_FOUND TRUE)
 endif()
 
 find_path(
