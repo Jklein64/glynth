@@ -7,6 +7,12 @@
 
 namespace glynth {
 
+class FreetypeError : public std::runtime_error {
+public:
+  explicit FreetypeError(const std::string &msg) : std::runtime_error(msg) {}
+  explicit FreetypeError(char *msg) : std::runtime_error(msg) {}
+};
+
 // Segment
 Segment::Segment(FT_Vector p0) : m_order(0) {
   m_points.emplace_back(static_cast<float>(p0.x) / 64,
@@ -161,10 +167,10 @@ void BoundingBox::expand(const BoundingBox &other) {
 Outline::Outline(std::vector<Segment> &&segments, BoundingBox bbox)
     : m_segments(segments), m_bbox(bbox) {
   // See https://pomax.github.io/bezierinfo/#tracing
-  m_parameters.resize(m_samples);
-  m_distances.resize(m_samples, 0.0f);
-  for (size_t i = 0; i < m_samples; i++) {
-    m_parameters[i] = static_cast<float>(i) / (m_samples - 1);
+  m_parameters.resize(s_samples);
+  m_distances.resize(s_samples, 0.0f);
+  for (size_t i = 0; i < s_samples; i++) {
+    m_parameters[i] = static_cast<float>(i) / (s_samples - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
     float j_decimal = m_parameters[i] * m_segments.size();
@@ -191,7 +197,7 @@ glm::vec2 Outline::sample(float t) const {
   // Find the i such that distances[i] = t * total_length
   size_t i_best = 0;
   float v_best = std::numeric_limits<float>::infinity();
-  for (size_t i = 0; i < m_samples; i++) {
+  for (size_t i = 0; i < s_samples; i++) {
     float v = std::abs(m_distances[i] - t * total_length);
     if (v < v_best) {
       i_best = i;
@@ -205,12 +211,24 @@ glm::vec2 Outline::sample(float t) const {
 }
 
 // Outliner
-Outliner::Outliner(const FT_Library &library) : m_library(library) {
+Outliner::Outliner() {
+  // Initialize Freetype library
+  if (s_library == nullptr) {
+    FT_Error error = FT_Init_FreeType(&s_library);
+    if (error) {
+      throw FreetypeError(FT_Error_String(error));
+    }
+  }
+
   std::string font_path = "/System/Library/Fonts/Supplemental/Arial.ttf";
-  FT_Error error = FT_New_Face(library, font_path.c_str(), 0, &m_face);
+  FT_Error error = FT_New_Face(s_library, font_path.c_str(), 0, &m_face);
   if (error) {
-    fmt::println(stderr, "Failed to read font");
-    exit(1);
+    throw FreetypeError(FT_Error_String(error));
+  }
+  // Set character size
+  error = FT_Set_Pixel_Sizes(m_face, 0, 16);
+  if (error) {
+    throw FreetypeError(FT_Error_String(error));
   }
 }
 
@@ -233,12 +251,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
         [](const FT_Vector *to, void *user) {
           auto &u = *static_cast<UserData *>(user);
           FT_Vector p0 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
-          if (u.p0.has_value()) {
-            // Replace all moves but the first with lines so text is continuous
-            u.segments.emplace_back(*u.p0, p0);
-          } else {
-            u.segments.emplace_back(p0);
-          }
+          u.segments.emplace_back(p0);
           u.p0 = p0;
           return 0;
         },

@@ -47,18 +47,19 @@ private:
   std::vector<Segment> m_segments;
   BoundingBox m_bbox;
   // For arc-length parameterization
-  inline static constexpr size_t m_samples = 10000;
+  inline static constexpr size_t s_samples = 10000;
   std::vector<float> m_parameters;
   std::vector<float> m_distances;
 };
 
 class Outliner {
 public:
-  Outliner(const FT_Library &library);
+  Outliner();
   Outline outline(std::string_view text);
 
 private:
-  const FT_Library &m_library;
+  // Must explicitly initialize or linking fails
+  inline static FT_Library s_library{nullptr};
   FT_Face m_face;
 };
 
