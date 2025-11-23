@@ -69,7 +69,9 @@ public:
   Outline(std::vector<std::unique_ptr<Segment>> &&segments, BoundingBox bbox);
   const std::vector<std::unique_ptr<Segment>> &segments() const;
   const BoundingBox &bbox() const;
+  // t must be within [0, 1)
   glm::vec2 sample(float t) const;
+  std::string svg_str() const;
 
 private:
   std::vector<std::unique_ptr<Segment>> m_segments;

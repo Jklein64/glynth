@@ -18,7 +18,11 @@ FetchContent_Declare(
     glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 1.0.2)
-FetchContent_MakeAvailable(freetype fmt glm)
+FetchContent_Declare(
+    libnpy
+    GIT_REPOSITORY https://github.com/matajoh/libnpy.git
+    GIT_TAG v1.5.3)
+FetchContent_MakeAvailable(freetype fmt glm libnpy)
 
 add_executable(read src/read.cpp src/outliner.cpp)
-target_link_libraries(read PRIVATE freetype fmt::fmt glm::glm)
+target_link_libraries(read PRIVATE freetype fmt::fmt glm::glm npy::npy)

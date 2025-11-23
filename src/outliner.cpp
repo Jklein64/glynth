@@ -2,6 +2,7 @@
 
 #include <freetype/ftoutln.h>
 #include <optional>
+#include <sstream>
 #include <string>
 
 namespace glynth {
@@ -20,7 +21,10 @@ Line::Line(FT_Vector p0, FT_Vector p1) : p0(p0.x, p0.y), p1(p1.x, p1.y) {}
 
 float Line::length() const { return glm::length(p1 - p0); }
 
-glm::vec2 Line::sample(float t) const { return (1 - t) * p0 + t * p1; }
+glm::vec2 Line::sample(float t) const {
+  assert(0 <= t && t < 1);
+  return (1 - t) * p0 + t * p1;
+}
 
 std::string Line::svg_str() const { return fmt::format("L {},{}", p1.x, p1.y); }
 
@@ -43,6 +47,7 @@ float Quadratic::length() const {
 
 glm::vec2 Quadratic::sample(float t) const {
   // TODO normalize by arc length
+  assert(0 <= t && t < 1);
   return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * c0 + t * t * p1;
 }
 
@@ -69,6 +74,7 @@ float Cubic::length() const {
 
 glm::vec2 Cubic::sample(float t) const {
   // TODO normalize by arc length
+  assert(0 <= t && t < 1);
   return (1 - t) * (1 - t) * (1 - t) * p0 + 3 * (1 - t) * (1 - t) * t * c0 +
          3 * (1 - t) * t * t * c1 + t * t * t * p1;
 }
@@ -105,6 +111,7 @@ const std::vector<std::unique_ptr<Segment>> &Outline::segments() const {
 const BoundingBox &Outline::bbox() const { return m_bbox; }
 
 glm::vec2 Outline::sample(float t) const {
+  assert(0 <= t && t < 1);
   t *= m_segments.size();
   size_t i = static_cast<size_t>(t);
   return m_segments[i]->sample(t - i);
@@ -118,6 +125,14 @@ Outliner::Outliner(const FT_Library &library) : m_library(library) {
     fmt::println(stderr, "Failed to read font");
     exit(1);
   }
+}
+
+std::string Outline::svg_str() const {
+  std::stringstream ss;
+  for (auto &&segment : m_segments) {
+    ss << segment->svg_str() << " ";
+  }
+  return ss.str();
 }
 
 struct UserData {
