@@ -11,14 +11,14 @@ namespace glynth {
 
 struct Segment {
   virtual ~Segment() = default;
-  virtual float length() const = 0;
+  virtual float length(float t = 1) const = 0;
   virtual glm::vec2 sample(float t) const = 0;
   virtual std::string svg_str() const = 0;
 };
 
 struct Move : public Segment {
   Move(FT_Vector p);
-  float length() const override;
+  float length(float t = 1) const override;
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
@@ -28,7 +28,7 @@ private:
 
 struct Line : public Segment {
   Line(FT_Vector p0, FT_Vector p1);
-  float length() const override;
+  float length(float t = 1) const override;
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
@@ -38,7 +38,7 @@ private:
 
 struct Quadratic : public Segment {
   Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1);
-  float length() const override;
+  float length(float t = 1) const override;
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
@@ -48,7 +48,7 @@ private:
 
 struct Cubic : public Segment {
   Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1);
-  float length() const override;
+  float length(float t = 1) const override;
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 

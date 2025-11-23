@@ -10,7 +10,7 @@ namespace glynth {
 // Move
 Move::Move(FT_Vector p) : p(p.x, p.y) {}
 
-float Move::length() const { return 0.0f; }
+float Move::length(float t) const { return 0.0f; }
 
 glm::vec2 Move::sample(float t) const { return p; }
 
@@ -19,7 +19,11 @@ std::string Move::svg_str() const { return fmt::format("M {},{}", p.x, p.y); }
 // Line
 Line::Line(FT_Vector p0, FT_Vector p1) : p0(p0.x, p0.y), p1(p1.x, p1.y) {}
 
-float Line::length() const { return glm::length(p1 - p0); }
+float Line::length(float t) const {
+  assert(0 <= t && t <= 1);
+  glm::vec2 p = t == 1 ? p1 : sample(t);
+  return glm::length(p - p0);
+}
 
 glm::vec2 Line::sample(float t) const {
   assert(0 <= t && t <= 1);
@@ -32,13 +36,13 @@ std::string Line::svg_str() const { return fmt::format("L {},{}", p1.x, p1.y); }
 Quadratic::Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1)
     : p0(p0.x, p0.y), c0(c0.x, c0.y), p1(p1.x, p1.y) {}
 
-float Quadratic::length() const {
-  // Approximate using 10 steps
+float Quadratic::length(float t) const {
   float length = 0.0f;
   glm::vec2 prev = p0;
   glm::vec2 curr;
   for (size_t i = 1; i < 10; i++) {
-    curr = sample(static_cast<float>(i) / (10 - 1));
+    // Travel from s=0 to s=t in 10 steps
+    curr = sample((static_cast<float>(i) / (10 - 1)) * t);
     length += glm::length(curr - prev);
     prev = curr;
   }
@@ -59,13 +63,13 @@ std::string Quadratic::svg_str() const {
 Cubic::Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1)
     : p0(p0.x, p0.y), c0(c0.x, c0.y), c1(c1.x, c1.y), p1(p1.x, p1.y) {}
 
-float Cubic::length() const {
-  // Approximate using 10 steps
+float Cubic::length(float t) const {
   float length = 0.0f;
   glm::vec2 prev = p0;
   glm::vec2 curr;
   for (size_t i = 1; i < 10; i++) {
-    curr = sample(static_cast<float>(i) / (10 - 1));
+    // Travel from s=0 to s=t in 10 steps
+    curr = sample((static_cast<float>(i) / (10 - 1)) * t);
     length += glm::length(curr - prev);
     prev = curr;
   }
@@ -112,35 +116,42 @@ const BoundingBox &Outline::bbox() const { return m_bbox; }
 
 glm::vec2 Outline::sample(float t) const {
   assert(0 <= t && t < 1);
-  // TODO take this computation out of the sample function!
   float total_length = 0.0f;
   for (auto &&segment : m_segments) {
     total_length += segment->length();
   }
-
-  std::vector<float> partitions(m_segments.size() + 1);
-  partitions[0] = 0;
-  partitions[m_segments.size()] = 1;
-  for (size_t i = 1; i < m_segments.size(); i++) {
-    partitions[i] = m_segments[i]->length() / total_length + partitions[i - 1];
+  // TODO take this computation out of the sample function!
+  constexpr size_t n_samples = 10000;
+  std::vector<float> parameters(n_samples);
+  std::vector<float> distances(n_samples);
+  for (size_t i = 0; i < n_samples; i++) {
+    parameters[i] = static_cast<float>(i) / (n_samples - 1);
+    // Clamp to within [0, 1) to ensure index is always valid
+    parameters[i] = std::min(parameters[i], std::nextafterf(1.0f, 0.0f));
+    distances[i] = 0.0f;
+    float j_decimal = parameters[i] * m_segments.size();
+    size_t j = static_cast<size_t>(j_decimal);
+    // Add length of all segments coming before segment j
+    for (size_t k = 0; k < j; k++) {
+      distances[i] += m_segments[k]->length();
+    }
+    // Add length of the part of segment j included by parameter
+    distances[i] += m_segments[j]->length(j_decimal - j);
   }
-
-  // TODO speed up with a binary search
-  size_t j = 0; // t is between `partitions[j]` and `partitions[j + 1]`
-  for (; j < partitions.size() - 1; j++) {
-    if (partitions[j] <= t && t < partitions[j + 1]) {
-      break;
+  // Find the i such that distances[i] = t * total_length
+  size_t i_best = 0;
+  float v_best = std::numeric_limits<float>::infinity();
+  for (size_t i = 0; i < n_samples; i++) {
+    float v = std::abs(distances[i] - t * total_length);
+    if (v < v_best) {
+      i_best = i;
+      v_best = v;
     }
   }
-
-  float phi = j + (t - partitions[j]) / (partitions[j + 1] - partitions[j]);
-  fmt::print("[{}, {}],", t, phi);
-  size_t i = static_cast<size_t>(phi);
-  return m_segments[i]->sample(phi - i);
-
-  t *= m_segments.size();
-  size_t i2 = static_cast<size_t>(t);
-  return m_segments[i2]->sample(t - i2);
+  // Do the naive sampling with t = parameters[i_best]
+  float j_decimal = parameters[i_best] * m_segments.size();
+  size_t j = static_cast<size_t>(j_decimal);
+  return m_segments[j]->sample(j_decimal - j);
 }
 
 // Outliner
