@@ -9,12 +9,16 @@ namespace glynth {
 // Move
 Move::Move(FT_Vector p) : p(p.x, p.y) {}
 
+float Move::length() const { return 0.0f; }
+
 glm::vec2 Move::sample(float t) const { return p; }
 
 std::string Move::svg_str() const { return fmt::format("M {},{}", p.x, p.y); }
 
 // Line
 Line::Line(FT_Vector p0, FT_Vector p1) : p0(p0.x, p0.y), p1(p1.x, p1.y) {}
+
+float Line::length() const { return glm::length(p1 - p0); }
 
 glm::vec2 Line::sample(float t) const { return (1 - t) * p0 + t * p1; }
 
@@ -23,6 +27,19 @@ std::string Line::svg_str() const { return fmt::format("L {},{}", p1.x, p1.y); }
 // Quadratic
 Quadratic::Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1)
     : p0(p0.x, p0.y), c0(c0.x, c0.y), p1(p1.x, p1.y) {}
+
+float Quadratic::length() const {
+  // Approximate using 10 steps
+  float length = 0.0f;
+  glm::vec2 prev = p0;
+  glm::vec2 curr;
+  for (size_t i = 1; i < 10; i++) {
+    curr = sample(static_cast<float>(i) / (10 - 1));
+    length += glm::length(curr - prev);
+    prev = curr;
+  }
+  return length;
+}
 
 glm::vec2 Quadratic::sample(float t) const {
   // TODO normalize by arc length
@@ -36,6 +53,19 @@ std::string Quadratic::svg_str() const {
 // Cubic
 Cubic::Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1)
     : p0(p0.x, p0.y), c0(c0.x, c0.y), c1(c1.x, c1.y), p1(p1.x, p1.y) {}
+
+float Cubic::length() const {
+  // Approximate using 10 steps
+  float length = 0.0f;
+  glm::vec2 prev = p0;
+  glm::vec2 curr;
+  for (size_t i = 1; i < 10; i++) {
+    curr = sample(static_cast<float>(i) / (10 - 1));
+    length += glm::length(curr - prev);
+    prev = curr;
+  }
+  return length;
+}
 
 glm::vec2 Cubic::sample(float t) const {
   // TODO normalize by arc length
