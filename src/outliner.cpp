@@ -273,6 +273,31 @@ Outline Outliner::outline(std::string_view text) {
     pen.y += glyph->advance.y;
   }
 
+  // Flip vertically so origin is in top right
+  for (auto &&segment : segments) {
+    if (auto m = dynamic_cast<Move *>(segment.get()); m != nullptr) {
+      m->p.y = bbox.max.y - (m->p.y - bbox.min.y);
+    }
+
+    else if (auto l = dynamic_cast<Line *>(segment.get()); l != nullptr) {
+      l->p0.y = bbox.max.y - (l->p0.y - bbox.min.y);
+      l->p1.y = bbox.max.y - (l->p1.y - bbox.min.y);
+    }
+
+    else if (auto s = dynamic_cast<Quadratic *>(segment.get()); s != nullptr) {
+      s->p0.y = bbox.max.y - (s->p0.y - bbox.min.y);
+      s->c0.y = bbox.max.y - (s->c0.y - bbox.min.y);
+      s->p1.y = bbox.max.y - (s->p1.y - bbox.min.y);
+    }
+
+    else if (auto s = dynamic_cast<Cubic *>(segment.get()); s != nullptr) {
+      s->p0.y = bbox.max.y - (s->p0.y - bbox.min.y);
+      s->c0.y = bbox.max.y - (s->c0.y - bbox.min.y);
+      s->c1.y = bbox.max.y - (s->c1.y - bbox.min.y);
+      s->p1.y = bbox.max.y - (s->p1.y - bbox.min.y);
+    }
+  }
+
   // This is actually the cbox, which might be larger than the tight bbox
   return Outline(std::move(segments), bbox);
 }

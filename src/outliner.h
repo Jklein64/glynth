@@ -22,7 +22,6 @@ struct Move : public Segment {
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
-private:
   glm::vec2 p;
 };
 
@@ -32,7 +31,6 @@ struct Line : public Segment {
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
-private:
   glm::vec2 p0, p1;
 };
 
@@ -42,7 +40,6 @@ struct Quadratic : public Segment {
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
-private:
   glm::vec2 p0, c0, p1;
 };
 
@@ -52,7 +49,6 @@ struct Cubic : public Segment {
   glm::vec2 sample(float t) const override;
   std::string svg_str() const override;
 
-private:
   glm::vec2 p0, c0, c1, p1;
 };
 

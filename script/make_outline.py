@@ -8,6 +8,8 @@ cmap = mpl.colormaps.get_cmap("copper")
 outline = np.load("out/outline.npy")
 lengths = np.zeros(outline.shape[0] - 1)
 fig, axs = plt.subplots(ncols=2)
+# Use graphics convention
+axs[0].yaxis.set_inverted(True)
 fig.set_size_inches(12, 4)
 for i, line in enumerate(sliding_window_view(outline, (2, 2))):
     p1, p2 = np.squeeze(line)
