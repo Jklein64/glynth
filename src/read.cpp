@@ -28,15 +28,6 @@ int main() {
     exit(1);
   }
 
-  // Print some metadata about the face
-  fmt::println("num_faces = {}", face->num_faces);
-  fmt::println("num_glyphs = {}", face->num_glyphs);
-  fmt::println("face_flags = {}", face->face_flags);
-  fmt::println("family_name = {}", face->family_name);
-  fmt::println("style_name = {}", face->style_name);
-  fmt::println("size.x_ppem = {}", face->size->metrics.x_ppem);
-  fmt::println("size.y_ppem = {}", face->size->metrics.y_ppem);
-
   glynth::Outliner outliner(library);
   auto outline = outliner.outline("Glynth");
   // Save to svg file for preview
