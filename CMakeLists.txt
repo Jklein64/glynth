@@ -25,7 +25,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(freetype fmt glm libnpy)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(Gperftools REQUIRED COMPONENTS PROFILER)
+find_package(Gperftools COMPONENTS PROFILER)
 
 add_executable(read src/read.cpp src/outliner.cpp)
 target_link_libraries(read PRIVATE 
