@@ -42,59 +42,87 @@
 #   endif()
 
 if(Gperftools_USE_STATIC_LIBS)
-  set(_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-  set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-macro(_find_library libvar libname)
-  find_library(${libvar}
-    NAMES ${libname}
-    HINTS ENV LD_LIBRARY_PATH
-    HINTS ENV DYLD_LIBRARY_PATH
-    PATHS
-    /usr/lib
-    /usr/local/lib
-    /usr/local/homebrew/lib
-    /opt/local/lib
-  )
-  if(NOT ${libvar}_NOTFOUND)
+find_library(
+    Gperftools_TCMALLOC
+    NAMES tcmalloc
+    HINTS
+    ENV LD_LIBRARY_PATH
+    HINTS
+    ENV DYLD_LIBRARY_PATH
+    PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
+)
+if(NOT Gperftools_TCMALLOC_NOTFOUND)
     set(${libvar}_FOUND TRUE)
-  endif()
-endmacro()
+endif()
 
-_find_library(Gperftools_TCMALLOC tcmalloc)
-_find_library(Gperftools_PROFILER profiler)
-_find_library(Gperftools_TCMALLOC_MINIMAL tcmalloc_minimal)
-_find_library(Gperftools_TCMALLOC_AND_PROFILER tcmalloc_and_profiler)
+find_library(
+    Gperftools_PROFILER
+    NAMES profiler
+    HINTS
+    ENV LD_LIBRARY_PATH
+    HINTS
+    ENV DYLD_LIBRARY_PATH
+    PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
+)
+if(NOT Gperftools_PROFILER_NOTFOUND)
+    set(${libvar}_FOUND TRUE)
+endif()
 
-find_path(Gperftools_INCLUDE_DIR
-  NAMES gperftools/heap-profiler.h
-  HINTS ${Gperftools_LIBRARY}/../../include
-  PATHS
-  /usr/include
-  /usr/local/include
-  /usr/local/homebrew/include
-  /opt/local/include
+find_library(
+    Gperftools_TCMALLOC_MINIMAL
+    NAMES tcmalloc_minimal
+    HINTS
+    ENV LD_LIBRARY_PATH
+    HINTS
+    ENV DYLD_LIBRARY_PATH
+    PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
+)
+if(NOT Gperftools_TCMALLOC_MINIMAL_NOTFOUND)
+    set(${libvar}_FOUND TRUE)
+endif()
+
+find_library(
+    Gperftools_TCMALLOC_AND_PROFILER
+    NAMES tcmalloc_and_profiler
+    HINTS
+    ENV LD_LIBRARY_PATH
+    HINTS
+    ENV DYLD_LIBRARY_PATH
+    PATHS /usr/lib /usr/local/lib /usr/local/homebrew/lib /opt/local/lib
+)
+if(NOT Gperftools_TCMALLOC_AND_PROFILER_NOTFOUND)
+    set(${libvar}_FOUND TRUE)
+endif()
+
+find_path(
+    Gperftools_INCLUDE_DIR
+    NAMES gperftools/heap-profiler.h
+    HINTS ${Gperftools_LIBRARY}/../../include
+    PATHS
+        /usr/include
+        /usr/local/include
+        /usr/local/homebrew/include
+        /opt/local/include
 )
 
 get_filename_component(Gperftools_LIBRARY_DIR ${Gperftools_TCMALLOC} DIRECTORY)
 # Set standard CMake FindPackage variables if found.
-set(Gperftools_LIBRARIES
-  ${Gperftools_TCMALLOC}
-  ${Gperftools_PROFILER}
-)
+set(Gperftools_LIBRARIES ${Gperftools_TCMALLOC} ${Gperftools_PROFILER})
 
 set(Gperftools_INCLUDE_DIRS ${Gperftools_INCLUDE_DIR})
 set(Gperftools_LIBRARY_DIRS ${Gperftools_LIBRARY_DIR})
 
 if(Gperftools_USE_STATIC_LIBS)
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ${_CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${_CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-  Gperftools
-  REQUIRED_VARS
-  Gperftools_INCLUDE_DIR
-  HANDLE_COMPONENTS
+    Gperftools
+    REQUIRED_VARS Gperftools_INCLUDE_DIR
+    HANDLE_COMPONENTS
 )
