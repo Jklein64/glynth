@@ -19,7 +19,7 @@ int main() {
   std::ifstream::pos_type pos = font_stream.tellg();
   std::vector<std::byte> font_data(pos);
   font_stream.seekg(std::ifstream::beg);
-  font_stream.read(reinterpret_cast<char *>(font_data.data()), pos);
+  font_stream.read(reinterpret_cast<char*>(font_data.data()), pos);
   glynth::Outliner outliner(font_data);
   auto outline = outliner.outline("Glynth", 16);
   // Save to svg file for preview

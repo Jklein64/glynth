@@ -30,16 +30,16 @@ private:
 struct BoundingBox {
   BoundingBox();
   BoundingBox(FT_BBox bbox);
-  void expand(const BoundingBox &other);
+  void expand(const BoundingBox& other);
   // a is at the bottom left, b is at the top right
   glm::vec2 min, max;
 };
 
 class Outline {
 public:
-  Outline(std::vector<Segment> &&segments, BoundingBox bbox);
-  const std::vector<Segment> &segments() const;
-  const BoundingBox &bbox() const;
+  Outline(std::vector<Segment>&& segments, BoundingBox bbox);
+  const std::vector<Segment>& segments() const;
+  const BoundingBox& bbox() const;
   // t must be within [0, 1)
   glm::vec2 sample(float t) const;
   std::string svg_str() const;
