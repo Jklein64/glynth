@@ -10,7 +10,7 @@ public:
   ~GlynthProcessor() override;
 
   //==============================================================================
-  void prepareToPlay(double sampleRate, int samplesPerBlock) override;
+  void prepareToPlay(double sample_rate, int samples_per_block) override;
   void releaseResources() override;
 
   bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
@@ -19,29 +19,32 @@ public:
   using AudioProcessor::processBlock;
 
   //==============================================================================
-  juce::AudioProcessorEditor* createEditor() override;
-  bool hasEditor() const override;
+  inline juce::AudioProcessorEditor* createEditor() override;
+  inline bool hasEditor() const override { return true; }
 
   //==============================================================================
-  const juce::String getName() const override;
+  inline const juce::String getName() const override { return JucePlugin_Name; }
 
-  bool acceptsMidi() const override;
-  bool producesMidi() const override;
-  bool isMidiEffect() const override;
+  inline bool acceptsMidi() const override { return true; }
+  inline bool producesMidi() const override { return true; }
+  inline bool isMidiEffect() const override { return false; }
   double getTailLengthSeconds() const override;
 
   //==============================================================================
-  int getNumPrograms() override;
-  int getCurrentProgram() override;
-  void setCurrentProgram(int index) override;
-  const juce::String getProgramName(int index) override;
-  void changeProgramName(int index, const juce::String& newName) override;
+  inline int getNumPrograms() override { return 1; }
+  inline int getCurrentProgram() override { return 0; }
+  inline void setCurrentProgram(int) override {}
+  inline const juce::String getProgramName(int) override { return {}; }
+  inline void changeProgramName(int, const juce::String&) override {}
 
   //==============================================================================
-  void getStateInformation(juce::MemoryBlock& destData) override;
-  void setStateInformation(const void* data, int sizeInBytes) override;
+  void getStateInformation(juce::MemoryBlock& dest_data) override;
+  void setStateInformation(const void* data, int size) override;
 
 private:
   //==============================================================================
+  inline static auto s_io_layouts = BusesProperties().withOutput(
+      "Output", juce::AudioChannelSet::stereo(), true);
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };
