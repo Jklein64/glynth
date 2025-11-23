@@ -49,7 +49,8 @@ int main() {
              bbox.max.y - bbox.min.y, outline.svg_str());
 
   // Save trace to numpy file for reconstruction
-  npy::tensor<float> points(std::vector<size_t>{1000, 2});
+  // One cycle of an 80 Hz wave at 44.1 kHz is around 550 samples
+  npy::tensor<float> points(std::vector<size_t>{550, 2});
   for (int i = 0; i < points.shape(0); i++) {
     float t = static_cast<float>(i) / (points.shape(0) - 1);
     // Clamp to within [0, 1) to ensure index is always valid
