@@ -47,3 +47,27 @@ target_link_libraries(
     read
     PRIVATE freetype fmt::fmt glm::glm npy::npy ${Gperftools_LIBRARIES}
 )
+
+juce_add_plugin(glynth
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    PLUGIN_MANUFACTURER_CODE Jk64
+    PLUGIN_CODE Glyn
+
+    FORMATS AU Standalone
+    PRODUCT_NAME glynth
+)
+
+target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
+target_compile_definitions(
+    glynth
+    PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
+)
+target_link_libraries(
+    glynth
+    PRIVATE juce::juce_audio_utils
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
