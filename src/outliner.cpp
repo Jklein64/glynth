@@ -11,6 +11,7 @@ namespace glynth {
 Segment::Segment(FT_Vector p0) : m_order(0) {
   m_points.emplace_back(static_cast<float>(p0.x) / 64,
                         static_cast<float>(p0.y) / 64);
+  m_length = 0.0f;
 }
 
 Segment::Segment(FT_Vector p0, FT_Vector p1) : m_order(1) {
@@ -18,6 +19,7 @@ Segment::Segment(FT_Vector p0, FT_Vector p1) : m_order(1) {
                         static_cast<float>(p0.y) / 64);
   m_points.emplace_back(static_cast<float>(p1.x) / 64,
                         static_cast<float>(p1.y) / 64);
+  m_length = glm::length(m_points[1] - m_points[0]);
 }
 
 Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2) : m_order(2) {
@@ -27,6 +29,15 @@ Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2) : m_order(2) {
                         static_cast<float>(p1.y) / 64);
   m_points.emplace_back(static_cast<float>(p2.x) / 64,
                         static_cast<float>(p2.y) / 64);
+  glm::vec2 prev = m_points[0];
+  glm::vec2 curr;
+  m_length = 0.0f;
+  for (size_t k = 1; k < 10; k++) {
+    // Travel from s=0 to s=1 in 10 steps
+    curr = sample((static_cast<float>(k) / (10 - 1)));
+    m_length += glm::length(curr - prev);
+    prev = curr;
+  }
 }
 
 Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3)
@@ -39,9 +50,22 @@ Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3)
                         static_cast<float>(p2.y) / 64);
   m_points.emplace_back(static_cast<float>(p3.x) / 64,
                         static_cast<float>(p3.y) / 64);
+  glm::vec2 prev = m_points[0];
+  glm::vec2 curr;
+  m_length = 0.0f;
+  for (size_t k = 1; k < 10; k++) {
+    // Travel from s=0 to s=1 in 10 steps
+    curr = sample((static_cast<float>(k) / (10 - 1)));
+    m_length += glm::length(curr - prev);
+    prev = curr;
+  }
 }
 
 float Segment::length(float t) const {
+  if (t == 1) {
+    return m_length;
+  }
+
   if (m_order == 0) {
     // Move
     return 0.0f;

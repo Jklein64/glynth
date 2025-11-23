@@ -21,6 +21,7 @@ struct Segment {
   std::string svg_str() const;
 
 private:
+  float m_length;
   size_t m_order;
   std::vector<glm::vec2> m_points;
 };
