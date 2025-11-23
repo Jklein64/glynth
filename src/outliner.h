@@ -10,46 +10,16 @@
 namespace glynth {
 
 struct Segment {
-  virtual ~Segment() = default;
-  virtual float length(float t = 1) const = 0;
-  virtual glm::vec2 sample(float t) const = 0;
-  virtual std::string svg_str() const = 0;
-};
+  friend class Outliner;
 
-struct Move : public Segment {
-  Move(FT_Vector p);
-  float length(float t = 1) const override;
-  glm::vec2 sample(float t) const override;
-  std::string svg_str() const override;
+  Segment(std::initializer_list<FT_Vector> points);
+  float length(float t = 1) const;
+  glm::vec2 sample(float t) const;
+  std::string svg_str() const;
 
-  glm::vec2 p;
-};
-
-struct Line : public Segment {
-  Line(FT_Vector p0, FT_Vector p1);
-  float length(float t = 1) const override;
-  glm::vec2 sample(float t) const override;
-  std::string svg_str() const override;
-
-  glm::vec2 p0, p1;
-};
-
-struct Quadratic : public Segment {
-  Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1);
-  float length(float t = 1) const override;
-  glm::vec2 sample(float t) const override;
-  std::string svg_str() const override;
-
-  glm::vec2 p0, c0, p1;
-};
-
-struct Cubic : public Segment {
-  Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1);
-  float length(float t = 1) const override;
-  glm::vec2 sample(float t) const override;
-  std::string svg_str() const override;
-
-  glm::vec2 p0, c0, c1, p1;
+private:
+  size_t m_order;
+  std::vector<glm::vec2> m_points;
 };
 
 struct BoundingBox {
@@ -62,15 +32,15 @@ struct BoundingBox {
 
 class Outline {
 public:
-  Outline(std::vector<std::unique_ptr<Segment>> &&segments, BoundingBox bbox);
-  const std::vector<std::unique_ptr<Segment>> &segments() const;
+  Outline(std::vector<Segment> &&segments, BoundingBox bbox);
+  const std::vector<Segment> &segments() const;
   const BoundingBox &bbox() const;
   // t must be within [0, 1)
   glm::vec2 sample(float t) const;
   std::string svg_str() const;
 
 private:
-  std::vector<std::unique_ptr<Segment>> m_segments;
+  std::vector<Segment> m_segments;
   BoundingBox m_bbox;
   // For arc-length parameterization
   inline static constexpr size_t m_samples = 10000;

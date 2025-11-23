@@ -7,93 +7,90 @@
 
 namespace glynth {
 
-// Move
-Move::Move(FT_Vector p)
-    : p(static_cast<float>(p.x) / 64, static_cast<float>(p.y) / 64) {}
-
-float Move::length(float t) const { return 0.0f; }
-
-glm::vec2 Move::sample(float t) const { return p; }
-
-std::string Move::svg_str() const { return fmt::format("M {},{}", p.x, p.y); }
-
-// Line
-Line::Line(FT_Vector p0, FT_Vector p1)
-    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
-      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
-
-float Line::length(float t) const {
-  assert(0 <= t && t <= 1);
-  glm::vec2 p = t == 1 ? p1 : sample(t);
-  return glm::length(p - p0);
-}
-
-glm::vec2 Line::sample(float t) const {
-  assert(0 <= t && t <= 1);
-  return (1 - t) * p0 + t * p1;
-}
-
-std::string Line::svg_str() const { return fmt::format("L {},{}", p1.x, p1.y); }
-
-// Quadratic
-Quadratic::Quadratic(FT_Vector p0, FT_Vector c0, FT_Vector p1)
-    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
-      c0(static_cast<float>(c0.x) / 64, static_cast<float>(c0.y) / 64),
-      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
-
-float Quadratic::length(float t) const {
-  float length = 0.0f;
-  glm::vec2 prev = p0;
-  glm::vec2 curr;
-  for (size_t i = 1; i < 10; i++) {
-    // Travel from s=0 to s=t in 10 steps
-    curr = sample((static_cast<float>(i) / (10 - 1)) * t);
-    length += glm::length(curr - prev);
-    prev = curr;
+// Segment
+Segment::Segment(std::initializer_list<FT_Vector> points)
+    : m_order(points.size() - 1) {
+  assert(0 < points.size() && points.size() <= 4);
+  m_points.reserve(points.size());
+  for (auto &&point : points) {
+    float x = static_cast<float>(point.x) / 64;
+    float y = static_cast<float>(point.y) / 64;
+    m_points.emplace_back(x, y);
   }
-  return length;
 }
 
-glm::vec2 Quadratic::sample(float t) const {
-  // TODO normalize by arc length
-  assert(0 <= t && t <= 1);
-  return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * c0 + t * t * p1;
-}
-
-std::string Quadratic::svg_str() const {
-  return fmt::format("Q {},{} {},{}", c0.x, c0.y, p1.x, p1.y);
-}
-
-// Cubic
-Cubic::Cubic(FT_Vector p0, FT_Vector c0, FT_Vector c1, FT_Vector p1)
-    : p0(static_cast<float>(p0.x) / 64, static_cast<float>(p0.y) / 64),
-      c0(static_cast<float>(c0.x) / 64, static_cast<float>(c0.y) / 64),
-      c1(static_cast<float>(c1.x) / 64, static_cast<float>(c1.y) / 64),
-      p1(static_cast<float>(p1.x) / 64, static_cast<float>(p1.y) / 64) {}
-
-float Cubic::length(float t) const {
-  float length = 0.0f;
-  glm::vec2 prev = p0;
-  glm::vec2 curr;
-  for (size_t i = 1; i < 10; i++) {
-    // Travel from s=0 to s=t in 10 steps
-    curr = sample((static_cast<float>(i) / (10 - 1)) * t);
-    length += glm::length(curr - prev);
-    prev = curr;
+float Segment::length(float t) const {
+  if (m_order == 0) {
+    // Move
+    return 0.0f;
+  } else {
+    // Line, Quadratic, or Cubic
+    auto &p0 = m_points[0];
+    if (m_order == 1) {
+      // Line
+      glm::vec2 p = sample(t);
+      return glm::length(p - p0);
+    } else {
+      // Quadratic or Cubic
+      float length = 0.0f;
+      glm::vec2 prev = p0;
+      glm::vec2 curr;
+      for (size_t i = 1; i < 10; i++) {
+        // Travel from s=0 to s=t in 10 steps
+        curr = sample((static_cast<float>(i) / (10 - 1)) * t);
+        length += glm::length(curr - prev);
+        prev = curr;
+      }
+      return length;
+    }
   }
-  return length;
 }
 
-glm::vec2 Cubic::sample(float t) const {
-  // TODO normalize by arc length
-  assert(0 <= t && t <= 1);
-  return (1 - t) * (1 - t) * (1 - t) * p0 + 3 * (1 - t) * (1 - t) * t * c0 +
-         3 * (1 - t) * t * t * c1 + t * t * t * p1;
+glm::vec2 Segment::sample(float t) const {
+  auto &p0 = m_points[0];
+  if (m_order == 0) {
+    // Move
+    return p0;
+  } else {
+    auto &p1 = m_points[1];
+    if (m_order == 1) {
+      // Line
+      return (1 - t) * p0 + t * p1;
+    } else {
+      auto &p2 = m_points[2];
+      if (m_order == 2) {
+        // Quadratic
+        return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2;
+      } else {
+        // Cubic
+        auto &p3 = m_points[3];
+        return (1 - t) * (1 - t) * (1 - t) * p0 +
+               3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 +
+               t * t * t * p3;
+      }
+    }
+  }
 }
 
-std::string Cubic::svg_str() const {
-  return fmt::format("Q {},{} {},{} {},{} ", c0.x, c0.y, c1.x, c1.y, p1.x,
-                     p1.y);
+std::string Segment::svg_str() const {
+  auto &p0 = m_points[0];
+  if (m_order == 0) {
+    return fmt::format("M {},{}", p0.x, p0.y);
+  } else {
+    auto &p1 = m_points[1];
+    if (m_order == 1) {
+      return fmt::format("L {},{}", p1.x, p1.y);
+    } else {
+      auto &p2 = m_points[2];
+      if (m_order == 2) {
+        return fmt::format("Q {},{} {},{}", p1.x, p1.y, p2.x, p2.y);
+      } else {
+        auto &p3 = m_points[3];
+        return fmt::format("Q {},{} {},{} {},{} ", p1.x, p1.y, p2.x, p2.y, p3.x,
+                           p3.y);
+      }
+    }
+  }
 }
 
 // BoundingBox
@@ -115,9 +112,8 @@ void BoundingBox::expand(const BoundingBox &other) {
 }
 
 // Outline
-Outline::Outline(std::vector<std::unique_ptr<Segment>> &&segments,
-                 BoundingBox bbox)
-    : m_segments(std::move(segments)), m_bbox(bbox) {
+Outline::Outline(std::vector<Segment> &&segments, BoundingBox bbox)
+    : m_segments(segments), m_bbox(bbox) {
   // See https://pomax.github.io/bezierinfo/#tracing
   m_parameters.resize(m_samples);
   m_distances.resize(m_samples, 0.0f);
@@ -129,16 +125,14 @@ Outline::Outline(std::vector<std::unique_ptr<Segment>> &&segments,
     size_t j = static_cast<size_t>(j_decimal);
     // Add length of all segments coming before segment j
     for (size_t k = 0; k < j; k++) {
-      m_distances[i] += m_segments[k]->length();
+      m_distances[i] += m_segments[k].length();
     }
     // Add length of the part of segment j included by parameter
-    m_distances[i] += m_segments[j]->length(j_decimal - j);
+    m_distances[i] += m_segments[j].length(j_decimal - j);
   }
 }
 
-const std::vector<std::unique_ptr<Segment>> &Outline::segments() const {
-  return m_segments;
-}
+const std::vector<Segment> &Outline::segments() const { return m_segments; }
 
 const BoundingBox &Outline::bbox() const { return m_bbox; }
 
@@ -146,7 +140,7 @@ glm::vec2 Outline::sample(float t) const {
   assert(0 <= t && t < 1);
   float total_length = 0.0f;
   for (auto &&segment : m_segments) {
-    total_length += segment->length();
+    total_length += segment.length();
   }
   // Find the i such that distances[i] = t * total_length
   size_t i_best = 0;
@@ -161,7 +155,7 @@ glm::vec2 Outline::sample(float t) const {
   // Do the naive sampling with t = parameters[i_best]
   float j_decimal = m_parameters[i_best] * m_segments.size();
   size_t j = static_cast<size_t>(j_decimal);
-  return m_segments[j]->sample(j_decimal - j);
+  return m_segments[j].sample(j_decimal - j);
 }
 
 // Outliner
@@ -177,14 +171,14 @@ Outliner::Outliner(const FT_Library &library) : m_library(library) {
 std::string Outline::svg_str() const {
   std::stringstream ss;
   for (auto &&segment : m_segments) {
-    ss << segment->svg_str() << " ";
+    ss << segment.svg_str() << " ";
   }
   return ss.str();
 }
 
 struct UserData {
   FT_Vector &pen;
-  std::vector<std::unique_ptr<Segment>> &segments;
+  std::vector<Segment> &segments;
   std::optional<FT_Vector> p0;
 };
 
@@ -195,9 +189,9 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
           FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
             // Replace all moves but the first with lines so text is continuous
-            u.segments.emplace_back(new Line(*u.p0, p1));
+            u.segments.push_back(Segment({*u.p0, p1}));
           } else {
-            u.segments.emplace_back(new Move(p1));
+            u.segments.push_back(Segment({p1}));
           }
           u.p0 = p1;
           return 0;
@@ -207,7 +201,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
           auto &u = *static_cast<UserData *>(user);
           FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            u.segments.emplace_back(new Line(*u.p0, p1));
+            u.segments.push_back(Segment({*u.p0, p1}));
           }
           u.p0 = p1;
           return 0;
@@ -215,31 +209,31 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
     .conic_to =
         [](const FT_Vector *c0, const FT_Vector *to, void *user) {
           auto &u = *static_cast<UserData *>(user);
-          FT_Vector c0_new = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p2 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            u.segments.emplace_back(new Quadratic(*u.p0, c0_new, p1));
+            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
+            u.segments.push_back(Segment({*u.p0, p1, p2}));
           }
-          u.p0 = p1;
+          u.p0 = p2;
           return 0;
         },
     .cubic_to =
         [](const FT_Vector *c0, const FT_Vector *c1, const FT_Vector *to,
            void *user) {
           auto &u = *static_cast<UserData *>(user);
-          FT_Vector c0_new = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-          FT_Vector c1_new = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
-          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p3 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            u.segments.emplace_back(new Cubic(*u.p0, c0_new, c1_new, p1));
+            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
+            FT_Vector p2 = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
+            u.segments.push_back(Segment({*u.p0, p1, p2, p3}));
           }
-          u.p0 = p1;
+          u.p0 = p3;
           return 0;
         },
 };
 
 Outline Outliner::outline(std::string_view text) {
-  std::vector<std::unique_ptr<Segment>> segments;
+  std::vector<Segment> segments;
   FT_Vector pen{.x = 0, .y = 0};
   BoundingBox bbox;
   UserData user = {
@@ -275,26 +269,8 @@ Outline Outliner::outline(std::string_view text) {
 
   // Flip vertically so origin is in top right
   for (auto &&segment : segments) {
-    if (auto m = dynamic_cast<Move *>(segment.get()); m != nullptr) {
-      m->p.y = bbox.max.y - (m->p.y - bbox.min.y);
-    }
-
-    else if (auto l = dynamic_cast<Line *>(segment.get()); l != nullptr) {
-      l->p0.y = bbox.max.y - (l->p0.y - bbox.min.y);
-      l->p1.y = bbox.max.y - (l->p1.y - bbox.min.y);
-    }
-
-    else if (auto s = dynamic_cast<Quadratic *>(segment.get()); s != nullptr) {
-      s->p0.y = bbox.max.y - (s->p0.y - bbox.min.y);
-      s->c0.y = bbox.max.y - (s->c0.y - bbox.min.y);
-      s->p1.y = bbox.max.y - (s->p1.y - bbox.min.y);
-    }
-
-    else if (auto s = dynamic_cast<Cubic *>(segment.get()); s != nullptr) {
-      s->p0.y = bbox.max.y - (s->p0.y - bbox.min.y);
-      s->c0.y = bbox.max.y - (s->c0.y - bbox.min.y);
-      s->c1.y = bbox.max.y - (s->c1.y - bbox.min.y);
-      s->p1.y = bbox.max.y - (s->p1.y - bbox.min.y);
+    for (auto &&point : segment.m_points) {
+      point.y = bbox.max.y - (point.y - bbox.min.y);
     }
   }
 
