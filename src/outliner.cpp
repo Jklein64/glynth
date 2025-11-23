@@ -22,7 +22,7 @@ Line::Line(FT_Vector p0, FT_Vector p1) : p0(p0.x, p0.y), p1(p1.x, p1.y) {}
 float Line::length() const { return glm::length(p1 - p0); }
 
 glm::vec2 Line::sample(float t) const {
-  assert(0 <= t && t < 1);
+  assert(0 <= t && t <= 1);
   return (1 - t) * p0 + t * p1;
 }
 
@@ -47,7 +47,7 @@ float Quadratic::length() const {
 
 glm::vec2 Quadratic::sample(float t) const {
   // TODO normalize by arc length
-  assert(0 <= t && t < 1);
+  assert(0 <= t && t <= 1);
   return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * c0 + t * t * p1;
 }
 
@@ -74,7 +74,7 @@ float Cubic::length() const {
 
 glm::vec2 Cubic::sample(float t) const {
   // TODO normalize by arc length
-  assert(0 <= t && t < 1);
+  assert(0 <= t && t <= 1);
   return (1 - t) * (1 - t) * (1 - t) * p0 + 3 * (1 - t) * (1 - t) * t * c0 +
          3 * (1 - t) * t * t * c1 + t * t * t * p1;
 }
@@ -112,9 +112,35 @@ const BoundingBox &Outline::bbox() const { return m_bbox; }
 
 glm::vec2 Outline::sample(float t) const {
   assert(0 <= t && t < 1);
+  // TODO take this computation out of the sample function!
+  float total_length = 0.0f;
+  for (auto &&segment : m_segments) {
+    total_length += segment->length();
+  }
+
+  std::vector<float> partitions(m_segments.size() + 1);
+  partitions[0] = 0;
+  partitions[m_segments.size()] = 1;
+  for (size_t i = 1; i < m_segments.size(); i++) {
+    partitions[i] = m_segments[i]->length() / total_length + partitions[i - 1];
+  }
+
+  // TODO speed up with a binary search
+  size_t j = 0; // t is between `partitions[j]` and `partitions[j + 1]`
+  for (; j < partitions.size() - 1; j++) {
+    if (partitions[j] <= t && t < partitions[j + 1]) {
+      break;
+    }
+  }
+
+  float phi = j + (t - partitions[j]) / (partitions[j + 1] - partitions[j]);
+  fmt::print("[{}, {}],", t, phi);
+  size_t i = static_cast<size_t>(phi);
+  return m_segments[i]->sample(phi - i);
+
   t *= m_segments.size();
-  size_t i = static_cast<size_t>(t);
-  return m_segments[i]->sample(t - i);
+  size_t i2 = static_cast<size_t>(t);
+  return m_segments[i2]->sample(t - i2);
 }
 
 // Outliner
