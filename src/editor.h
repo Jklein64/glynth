@@ -24,9 +24,7 @@ struct ShaderManager : public efsw::FileWatchListener {
                         std::string old_filename) override;
 
 private:
-  inline static auto s_shader_dir =
-      std::filesystem::path(__FILE__).parent_path().parent_path().append(
-          "shader");
+  inline static auto s_shader_dir = std::filesystem::path(GLYNTH_SHADER_DIR);
 
   struct ProgramMetadata {
     std::string vert_name;     // e.g. vert

@@ -82,6 +82,8 @@ target_compile_definitions(
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DONT_ASSERT_ON_GLSL_COMPILE_ERROR=1
+        # TODO only compile with this on debug builds
+        GLYNTH_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shader"
 )
 target_link_libraries(
     glynth
