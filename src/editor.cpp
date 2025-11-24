@@ -22,7 +22,10 @@ ShaderManager::ProgramMetadata::ProgramMetadata(const std::string& vname,
 }
 
 ShaderManager::ShaderManager(juce::OpenGLContext& context)
-    : m_context(context) {}
+    : m_context(context) {
+  m_file_watcher.addWatch(s_shader_dir, this);
+  m_file_watcher.watch();
+}
 
 bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
                                const ShaderName& frag_name) {
@@ -56,8 +59,6 @@ bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
   m_name_to_id[vert_name] = id;
   m_name_to_id[frag_name] = id;
   m_metadata.insert_or_assign(id, metadata);
-  // m_id_to_vert_name[id] = vert_name;
-  // m_id_to_frag_name[id] = frag_name;
   m_programs[id] = std::move(program);
   return true;
 }
@@ -74,12 +75,9 @@ bool ShaderManager::useProgram(const ProgramId& id) {
 }
 
 void ShaderManager::markDirty(const ShaderName& name) {
-  if (auto it = m_name_to_id.find(name); it != m_name_to_id.end()) {
-    // std::lock_guard<std::mutex> lk(m_mutex);
-    m_dirty.push_back(it->second);
-  } else {
-    fmt::println(stderr, R"(No shader found with name "{}")", name);
-  }
+  auto id = m_name_to_id.at(name);
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_dirty.push_back(id);
 }
 
 void ShaderManager::tryUpdateDirty() {
@@ -94,6 +92,7 @@ void ShaderManager::tryUpdateDirty() {
         m_programs.insert_or_assign(id, std::move(program));
         m_vert_sources.insert_or_assign(id, std::move(vert_source));
         m_frag_sources.insert_or_assign(id, std::move(frag_source));
+        fmt::println(R"(Updated shader program "{}")", id);
       }
     }
     m_dirty.clear();
@@ -131,6 +130,37 @@ std::string ShaderManager::readFile(const std::string& filename) const {
   return buffer.str();
 }
 
+void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
+                                     const std::string& filename,
+                                     efsw::Action action,
+                                     std::string old_filename) {
+  if (action == efsw::Actions::Modified) {
+    std::string name = std::filesystem::path(filename).stem();
+    if (m_name_to_id.contains(name)) {
+      markDirty(name);
+      fmt::println(R"(Marked "{}" as dirty)", filename);
+    }
+  }
+
+  else if (action == efsw::Actions::Moved) {
+    std::string name = std::filesystem::path(old_filename).stem();
+    if (m_name_to_id.contains(name)) {
+      fmt::println(stderr,
+                   R"(Warning: rename "{}" -> "{}" invalidates hot reloading)",
+                   old_filename, filename);
+    }
+  }
+
+  else if (action == efsw::Actions::Delete) {
+    std::string name = std::filesystem::path(filename).stem();
+    if (m_name_to_id.contains(name)) {
+      fmt::println(stderr,
+                   R"(Warning: deletion of "{}" invalidates hot reloading)",
+                   filename);
+    }
+  }
+}
+
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context),
       m_vert_source(shaders::vert_glsl), m_frag_source(shaders::frag_glsl) {
@@ -141,8 +171,6 @@ GlynthEditor::GlynthEditor(GlynthProcessor& p)
   m_context.setRenderer(this);
   m_context.setContinuousRepainting(true);
   m_context.attachTo(*this);
-  m_file_watcher.addWatch(s_shader_dir, this);
-  m_file_watcher.watch();
 }
 
 GlynthEditor::~GlynthEditor() { m_context.detach(); }
@@ -169,55 +197,16 @@ void GlynthEditor::newOpenGLContextCreated() {
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   m_shader_manager.addProgram("bg", "vert", "frag");
-  m_shader_manager.markDirty("vert");
-  // reloadShaders();
 }
 
 void GlynthEditor::renderOpenGL() {
-  using namespace juce::gl;
-
-  // {
-  //   std::unique_lock<std::mutex> lk{m_mutex, std::defer_lock};
-  //   if (lk.try_lock() && m_dirty_shader.has_value()) {
-  //     std::ifstream shader_source(*m_dirty_shader);
-  //     std::stringstream buffer;
-  //     buffer << shader_source.rdbuf();
-  //     if (*m_dirty_shader == "vert.glsl") {
-  //       m_vert_source = buffer.str();
-  //     } else {
-  //       m_frag_source = buffer.str();
-  //     }
-  //     reloadShaders();
-  //     fmt::println("Updated shaders");
-  //     m_dirty_shader = std::nullopt;
-  //   }
-  // }
   m_shader_manager.tryUpdateDirty();
 
+  using namespace juce::gl;
   juce::OpenGLHelpers::clear(juce::Colours::black);
-  // m_program->use();
   m_shader_manager.useProgram("bg");
   glBindVertexArray(m_vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 void GlynthEditor::openGLContextClosing() {}
-
-void GlynthEditor::handleFileAction(efsw::WatchID, const std::string& dir,
-                                    const std::string& filename, efsw::Action,
-                                    std::string) {
-  if (filename == "frag.glsl" || filename == "vert.glsl") {
-    std::lock_guard<std::mutex> lk(m_mutex);
-    m_dirty_shader = dir + filename;
-  }
-}
-
-void GlynthEditor::reloadShaders() {
-  m_program.reset(new juce::OpenGLShaderProgram(m_context));
-  if (m_program->addVertexShader(m_vert_source) &&
-      m_program->addFragmentShader(m_frag_source) && m_program->link()) {
-    m_program->use();
-  } else {
-    fmt::println(stderr, "Failed to load shaders");
-  }
-}

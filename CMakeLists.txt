@@ -77,7 +77,11 @@ target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
 target_compile_features(glynth PRIVATE cxx_std_20)
 target_compile_definitions(
     glynth
-    PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
+    PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DONT_ASSERT_ON_GLSL_COMPILE_ERROR=1
 )
 target_link_libraries(
     glynth
