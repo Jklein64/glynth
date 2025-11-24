@@ -59,6 +59,14 @@ juce_add_plugin(
     PRODUCT_NAME glynth
 )
 
+juce_add_binary_data(
+    shaders
+    HEADER_NAME "shaders.h"
+    NAMESPACE shaders
+    SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/shader/frag.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/shader/vert.glsl"
+)
+
 target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
 target_compile_features(glynth PRIVATE cxx_std_20)
 target_compile_definitions(
@@ -67,7 +75,7 @@ target_compile_definitions(
 )
 target_link_libraries(
     glynth
-    PRIVATE juce::juce_audio_utils juce::juce_opengl fmt::fmt glm::glm
+    PRIVATE shaders juce::juce_audio_utils juce::juce_opengl fmt::fmt glm::glm
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

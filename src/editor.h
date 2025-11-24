@@ -2,11 +2,8 @@
 
 #include "processor.h"
 
-#include <filesystem>
 #include <glm/glm.hpp>
 #include <juce_opengl/juce_opengl.h>
-#include <optional>
-#include <string_view>
 #include <vector>
 class OpenGlComponent final : public juce::Component,
                               public juce::OpenGLRenderer {
@@ -20,16 +17,6 @@ public:
   void openGLContextClosing() override;
 
 private:
-  inline static auto s_shader_dir =
-      std::filesystem::path(__FILE__).parent_path().parent_path().append(
-          "shader");
-  inline static auto s_vert_file =
-      std::filesystem::path(s_shader_dir).append("vert.glsl");
-  inline static auto s_frag_file =
-      std::filesystem::path(s_shader_dir).append("frag.glsl");
-
-  std::optional<std::string> readFile(std::string_view filename) const;
-
   juce::OpenGLContext m_context;
 
   struct Vertex {

@@ -1,8 +1,8 @@
 #include "editor.h"
 #include "processor.h"
+#include "shaders.h"
 
 #include <fmt/base.h>
-#include <fstream>
 
 //==============================================================================
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
@@ -75,17 +75,13 @@ void OpenGlComponent::newOpenGLContextCreated() {
       static_cast<GLsizeiptr>(sizeof(uint32_t) * m_index_buffer.size()),
       m_index_buffer.data(), GL_STATIC_DRAW);
 
-  auto vertex_shader = readFile(s_vert_file.c_str());
-  auto fragment_shader = readFile(s_frag_file.c_str());
-  if (vertex_shader.has_value() && fragment_shader.has_value()) {
-    m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
-    if (m_shader_program->addVertexShader(*vertex_shader) &&
-        m_shader_program->addFragmentShader(*fragment_shader) &&
-        m_shader_program->link()) {
-      m_shader_program->use();
-    } else {
-      fmt::println(stderr, "Failed to load shaders");
-    }
+  m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
+  if (m_shader_program->addVertexShader(shaders::vert_glsl) &&
+      m_shader_program->addFragmentShader(shaders::frag_glsl) &&
+      m_shader_program->link()) {
+    m_shader_program->use();
+  } else {
+    fmt::println(stderr, "Failed to load shaders");
   }
 }
 
@@ -137,23 +133,3 @@ void OpenGlComponent::renderOpenGL() {
 }
 
 void OpenGlComponent::openGLContextClosing() {}
-
-std::optional<std::string>
-OpenGlComponent::readFile(std::string_view filename) const {
-  // See https://codereview.stackexchange.com/a/22907
-  std::vector<char> chars;
-  std::ifstream ifs(filename, std::ios::ate);
-  std::ifstream::pos_type pos = ifs.tellg();
-  if (pos <= 0) {
-    fmt::println("error reading {}, pos = {}", filename.data(),
-                 static_cast<size_t>(pos));
-    return std::nullopt;
-  } else {
-    chars.resize(static_cast<size_t>(pos) + 1);
-    ifs.seekg(0, std::ios::beg);
-    ifs.read(chars.data(), pos);
-    // Need to null-terminate the string
-    chars[chars.size() - 1] = '\0';
-    return std::make_optional(std::string(chars.data()));
-  }
-}
