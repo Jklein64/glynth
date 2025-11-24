@@ -27,12 +27,18 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.10
 )
+FetchContent_Declare(
+    efsw
+    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+    GIT_TAG master
+)
 FetchContent_MakeAvailable(
     freetype
     fmt
     glm
     libnpy
     juce
+    efsw
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -75,7 +81,13 @@ target_compile_definitions(
 )
 target_link_libraries(
     glynth
-    PRIVATE shaders juce::juce_audio_utils juce::juce_opengl fmt::fmt glm::glm
+    PRIVATE
+        shaders
+        juce::juce_audio_utils
+        juce::juce_opengl
+        fmt::fmt
+        glm::glm
+        efsw-static
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
