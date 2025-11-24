@@ -2,6 +2,7 @@
 #include "processor.h"
 
 #include <fmt/base.h>
+#include <fstream>
 
 //==============================================================================
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
@@ -74,37 +75,17 @@ void OpenGlComponent::newOpenGLContextCreated() {
       static_cast<GLsizeiptr>(sizeof(uint32_t) * m_index_buffer.size()),
       m_index_buffer.data(), GL_STATIC_DRAW);
 
-  std::string vertex_shader = R"(
-    #version 330 core
-    layout (location = 0) in vec2 aPos; // the position variable has attribute position 0
-    layout (location = 1) in vec4 source_color;
-
-    out vec4 vertexColor; // specify a color output to the fragment shader
-
-    void main() {
-      gl_Position = vec4(aPos, 0.0, 1.0); // see how we directly give a vec2 to vec4's constructor
-      vertexColor = source_color; // vec4(0.5, 0.0, 0.0, 1.0); // set the output variable to a dark-red color
+  auto vertex_shader = readFile(s_vert_file.c_str());
+  auto fragment_shader = readFile(s_frag_file.c_str());
+  if (vertex_shader.has_value() && fragment_shader.has_value()) {
+    m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
+    if (m_shader_program->addVertexShader(*vertex_shader) &&
+        m_shader_program->addFragmentShader(*fragment_shader) &&
+        m_shader_program->link()) {
+      m_shader_program->use();
+    } else {
+      fmt::println(stderr, "Failed to load shaders");
     }
-  )";
-
-  std::string fragment_shader = R"(
-    #version 330 core
-    out vec4 FragColor;
-
-    in vec4 vertexColor; // the input variable from the vertex shader (same name and same type)
-
-    void main() {
-      FragColor = vertexColor;
-    }
-  )";
-
-  m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
-  if (m_shader_program->addVertexShader(vertex_shader) &&
-      m_shader_program->addFragmentShader(fragment_shader) &&
-      m_shader_program->link()) {
-    m_shader_program->use();
-  } else {
-    fmt::println(stderr, "Failed to load shaders");
   }
 }
 
@@ -156,3 +137,23 @@ void OpenGlComponent::renderOpenGL() {
 }
 
 void OpenGlComponent::openGLContextClosing() {}
+
+std::optional<std::string>
+OpenGlComponent::readFile(std::string_view filename) const {
+  // See https://codereview.stackexchange.com/a/22907
+  std::vector<char> chars;
+  std::ifstream ifs(filename, std::ios::ate);
+  std::ifstream::pos_type pos = ifs.tellg();
+  if (pos <= 0) {
+    fmt::println("error reading {}, pos = {}", filename.data(),
+                 static_cast<size_t>(pos));
+    return std::nullopt;
+  } else {
+    chars.resize(static_cast<size_t>(pos) + 1);
+    ifs.seekg(0, std::ios::beg);
+    ifs.read(chars.data(), pos);
+    // Need to null-terminate the string
+    chars[chars.size() - 1] = '\0';
+    return std::make_optional(std::string(chars.data()));
+  }
+}
