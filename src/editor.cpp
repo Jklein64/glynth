@@ -36,44 +36,23 @@ void OpenGlComponent::paint(juce::Graphics&) {}
 
 void OpenGlComponent::newOpenGLContextCreated() {
   using namespace juce::gl;
-  m_context.extensions.glGenBuffers(1, &m_vbo);
-  m_context.extensions.glGenBuffers(1, &m_ibo);
+  glGenVertexArrays(1, &m_vao);
+  glGenBuffers(1, &m_vbo);
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  m_vertex_buffer = {                   // x y r g b
+                     0,   0,   1, 0, 0, //
+                     1,   0,   0, 1, 0, //
+                     0.5, 0.5, 0, 0, 1};
+  glBufferData(GL_ARRAY_BUFFER,
+               static_cast<GLsizeiptr>(m_vertex_buffer.size() * sizeof(float)),
+               m_vertex_buffer.data(), GL_STATIC_DRAW);
 
-  m_vertex_buffer = {// Vertex 0
-                     {
-                         {-0.5f, 0.5f},       // (-0.5, 0.5)
-                         {1.f, 0.f, 0.f, 1.f} // Red
-                     },
-                     // Vertex 1
-                     {
-                         {0.5f, 0.5f},         // (0.5, 0.5)
-                         {1.f, 0.5f, 0.f, 1.f} // Orange
-                     },
-                     // Vertex 2
-                     {
-                         {0.5f, -0.5f},       // (0.5, -0.5)
-                         {1.f, 1.f, 0.f, 1.f} // Yellow
-                     },
-                     // Vertex 3
-                     {
-                         {-0.5f, -0.5f},      // (-0.5, -0.5)
-                         {1.f, 0.f, 1.f, 1.f} // Purple
-                     }};
-
-  // We need 6 indices, 1 for each corner of the two triangles.
-  m_index_buffer = {0, 1, 2, 0, 2, 3};
-
-  m_context.extensions.glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  m_context.extensions.glBufferData(
-      GL_ARRAY_BUFFER,
-      static_cast<GLsizeiptr>(sizeof(Vertex) * m_vertex_buffer.size()),
-      m_vertex_buffer.data(), GL_STATIC_DRAW);
-
-  m_context.extensions.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
-  m_context.extensions.glBufferData(
-      GL_ELEMENT_ARRAY_BUFFER,
-      static_cast<GLsizeiptr>(sizeof(uint32_t) * m_index_buffer.size()),
-      m_index_buffer.data(), GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+                        reinterpret_cast<GLvoid*>(sizeof(float) * 2));
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
 
   m_shader_program.reset(new juce::OpenGLShaderProgram(m_context));
   if (m_shader_program->addVertexShader(shaders::vert_glsl) &&
@@ -89,47 +68,8 @@ void OpenGlComponent::renderOpenGL() {
   using namespace juce::gl;
   juce::OpenGLHelpers::clear(juce::Colours::black);
   m_shader_program->use();
-
-  m_context.extensions.glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  m_context.extensions.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
-
-  m_context.extensions.glVertexAttribPointer(
-      0,              // The attribute's index (AKA location).
-      2,              // How many values this attribute contains.
-      GL_FLOAT,       // The attribute's type (float).
-      GL_FALSE,       // Tells OpenGL NOT to normalise the values.
-      sizeof(Vertex), // How many bytes to move to find the attribute with
-                      // the same index in the next vertex.
-      nullptr         // How many bytes to move from the start of this vertex
-                      // to find this attribute (the default is 0 so we just
-                      // pass nullptr here).
-  );
-  m_context.extensions.glEnableVertexAttribArray(0);
-
-  // Enable to colour attribute.
-  m_context.extensions.glVertexAttribPointer(
-      1, // This attribute has an index of 1
-      4, // This time we have four values for the
-         // attribute (r, g, b, a)
-      GL_FLOAT, GL_FALSE, sizeof(Vertex),
-      (GLvoid*)(sizeof(float) * 2) // This attribute comes after the
-                                   // position attribute in the Vertex
-                                   // struct, so we need to skip over the
-                                   // size of the position array to find
-                                   // the start of this attribute.
-  );
-  m_context.extensions.glEnableVertexAttribArray(1);
-
-  glDrawElements(
-      GL_TRIANGLES, // Tell OpenGL to render triangles.
-      static_cast<GLsizei>(m_index_buffer.size()), // How many indices we have.
-      GL_UNSIGNED_INT,                             // What type our indices are.
-      nullptr // We already gave OpenGL our indices so we don't
-              // need to pass that again here, so pass nullptr.
-  );
-
-  m_context.extensions.glDisableVertexAttribArray(0);
-  m_context.extensions.glDisableVertexAttribArray(1);
+  glBindVertexArray(m_vao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 void OpenGlComponent::openGLContextClosing() {}

@@ -19,15 +19,10 @@ public:
 private:
   juce::OpenGLContext m_context;
 
-  struct Vertex {
-    float position[2];
-    float color[4];
-  };
-
-  std::vector<Vertex> m_vertex_buffer;
-  std::vector<uint32_t> m_index_buffer;
   GLuint m_vbo;
-  GLuint m_ibo;
+  GLuint m_vao;
+  std::vector<float> m_vertex_buffer;
+  std::vector<uint32_t> m_index_buffer;
   std::unique_ptr<juce::OpenGLShaderProgram> m_shader_program;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OpenGlComponent)
