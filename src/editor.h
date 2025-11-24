@@ -9,12 +9,12 @@
 #include <optional>
 #include <vector>
 
-class OpenGlComponent final : public juce::Component,
-                              public juce::OpenGLRenderer,
-                              public efsw::FileWatchListener {
+class GlynthEditor final : public juce::AudioProcessorEditor,
+                           public juce::OpenGLRenderer,
+                           public efsw::FileWatchListener {
 public:
-  explicit OpenGlComponent();
-  ~OpenGlComponent() override;
+  explicit GlynthEditor(GlynthProcessor&);
+  ~GlynthEditor() override;
 
   void paint(juce::Graphics&) override;
   void newOpenGLContextCreated() override;
@@ -36,6 +36,7 @@ private:
 
   void reloadShaders();
 
+  GlynthProcessor& processor_ref;
   juce::OpenGLContext m_context;
   std::unique_ptr<juce::OpenGLShaderProgram> m_program;
 
@@ -49,23 +50,6 @@ private:
   std::string m_vert_source;
   std::string m_frag_source;
   std::mutex m_mutex;
-
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OpenGlComponent)
-};
-
-//==============================================================================
-class GlynthEditor final : public juce::AudioProcessorEditor {
-public:
-  explicit GlynthEditor(GlynthProcessor&);
-  ~GlynthEditor() override;
-
-  //==============================================================================
-  void paint(juce::Graphics&) override;
-  void resized() override;
-
-private:
-  GlynthProcessor& processor_ref;
-  OpenGlComponent m_opengl_component;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthEditor)
 };

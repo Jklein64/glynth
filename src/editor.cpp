@@ -6,26 +6,11 @@
 #include <fstream>
 #include <sstream>
 
-//==============================================================================
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
-    : AudioProcessorEditor(&p), processor_ref(p) {
+    : AudioProcessorEditor(&p), processor_ref(p),
+      m_vert_source(shaders::vert_glsl), m_frag_source(shaders::frag_glsl) {
   // Must set size for window to show properly
   setSize(400, 300);
-  addAndMakeVisible(m_opengl_component);
-}
-
-GlynthEditor::~GlynthEditor() {}
-
-//==============================================================================
-void GlynthEditor::paint(juce::Graphics&) {
-  // Only the OpenGlComponent for now, but this will have controls later
-}
-
-void GlynthEditor::resized() { m_opengl_component.setBounds(getLocalBounds()); }
-
-//==============================================================================
-OpenGlComponent::OpenGlComponent()
-    : m_vert_source(shaders::vert_glsl), m_frag_source(shaders::frag_glsl) {
   setOpaque(true);
   m_context.setOpenGLVersionRequired(juce::OpenGLContext::openGL3_2);
   m_context.setRenderer(this);
@@ -35,11 +20,11 @@ OpenGlComponent::OpenGlComponent()
   m_file_watcher.watch();
 }
 
-OpenGlComponent::~OpenGlComponent() { m_context.detach(); }
+GlynthEditor::~GlynthEditor() { m_context.detach(); }
 
-void OpenGlComponent::paint(juce::Graphics&) {}
+void GlynthEditor::paint(juce::Graphics&) {}
 
-void OpenGlComponent::newOpenGLContextCreated() {
+void GlynthEditor::newOpenGLContextCreated() {
   using namespace juce::gl;
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vbo);
@@ -61,7 +46,7 @@ void OpenGlComponent::newOpenGLContextCreated() {
   reloadShaders();
 }
 
-void OpenGlComponent::renderOpenGL() {
+void GlynthEditor::renderOpenGL() {
   using namespace juce::gl;
 
   {
@@ -87,18 +72,18 @@ void OpenGlComponent::renderOpenGL() {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void OpenGlComponent::openGLContextClosing() {}
+void GlynthEditor::openGLContextClosing() {}
 
-void OpenGlComponent::handleFileAction(efsw::WatchID, const std::string& dir,
-                                       const std::string& filename,
-                                       efsw::Action, std::string) {
+void GlynthEditor::handleFileAction(efsw::WatchID, const std::string& dir,
+                                    const std::string& filename, efsw::Action,
+                                    std::string) {
   if (filename == "frag.glsl" || filename == "vert.glsl") {
     std::lock_guard<std::mutex> lk(m_mutex);
     m_dirty_shader = dir + filename;
   }
 }
 
-void OpenGlComponent::reloadShaders() {
+void GlynthEditor::reloadShaders() {
   m_program.reset(new juce::OpenGLShaderProgram(m_context));
   if (m_program->addVertexShader(m_vert_source) &&
       m_program->addFragmentShader(m_frag_source) && m_program->link()) {

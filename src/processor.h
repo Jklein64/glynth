@@ -19,7 +19,7 @@ public:
   using AudioProcessor::processBlock;
 
   //==============================================================================
-  inline juce::AudioProcessorEditor* createEditor() override;
+  juce::AudioProcessorEditor* createEditor() override;
   inline bool hasEditor() const override { return true; }
 
   //==============================================================================
