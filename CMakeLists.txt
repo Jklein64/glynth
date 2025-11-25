@@ -73,7 +73,10 @@ juce_add_binary_data(
     "${CMAKE_CURRENT_SOURCE_DIR}/shader/frag.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/shader/vert.glsl"
 )
 
-target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
+target_sources(
+    glynth
+    PRIVATE src/editor.cpp src/processor.cpp src/shader_manager.cpp
+)
 target_compile_features(glynth PRIVATE cxx_std_20)
 option(GLYNTH_HOT_SHADER_RELOAD "Enable hot reloading of shaders" OFF)
 message("GLYNTH_HOT_SHADER_RELOAD = ${GLYNTH_HOT_SHADER_RELOAD}")
