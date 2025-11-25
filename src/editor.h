@@ -58,7 +58,4 @@ public:
                       const std::string& program_id);
 
   void render() override;
-
-private:
-  // std::vector<GLfloat> m_vertices;
 };
