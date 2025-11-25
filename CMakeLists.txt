@@ -75,6 +75,10 @@ juce_add_binary_data(
 
 target_sources(glynth PRIVATE src/editor.cpp src/processor.cpp)
 target_compile_features(glynth PRIVATE cxx_std_20)
+option(GLYNTH_HOT_SHADER_RELOAD "Enable hot reloading of shaders" OFF)
+message("GLYNTH_HOT_SHADER_RELOAD = ${GLYNTH_HOT_SHADER_RELOAD}")
+# Generator expression for Hot Shader Reloading (HSR)
+set(HSR_GEN $<BOOL:${GLYNTH_HOT_SHADER_RELOAD}>)
 target_compile_definitions(
     glynth
     PRIVATE
@@ -82,8 +86,8 @@ target_compile_definitions(
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DONT_ASSERT_ON_GLSL_COMPILE_ERROR=1
-        # TODO only compile with this on debug builds
-        GLYNTH_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shader"
+        $<${HSR_GEN}:GLYNTH_HSR>
+        $<${HSR_GEN}:GLYNTH_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shader">
 )
 target_link_libraries(
     glynth

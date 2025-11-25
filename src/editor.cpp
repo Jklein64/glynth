@@ -4,8 +4,10 @@
 
 #include <fmt/base.h>
 #include <fmt/format.h>
+#ifdef GLYNTH_HSR
 #include <fstream>
 #include <sstream>
+#endif
 
 ShaderManager::ProgramMetadata::ProgramMetadata(const std::string& vname,
                                                 const std::string& fname)
@@ -23,8 +25,10 @@ ShaderManager::ProgramMetadata::ProgramMetadata(const std::string& vname,
 
 ShaderManager::ShaderManager(juce::OpenGLContext& context)
     : m_context(context) {
+#ifdef GLYNTH_HSR
   m_file_watcher.addWatch(s_shader_dir, this);
   m_file_watcher.watch();
+#endif
 }
 
 bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
@@ -75,12 +79,17 @@ bool ShaderManager::useProgram(const ProgramId& id) {
 }
 
 void ShaderManager::markDirty(const ShaderName& name) {
+#ifdef GLYNTH_HSR
   auto id = m_name_to_id.at(name);
   std::lock_guard<std::mutex> lk(m_mutex);
   m_dirty.push_back(id);
+#else
+  juce::ignoreUnused(name);
+#endif
 }
 
 void ShaderManager::tryUpdateDirty() {
+#ifdef GLYNTH_HSR
   if (!m_dirty.empty()) {
     for (auto& id : m_dirty) {
       ProgramMetadata& metadata = m_metadata.at(id);
@@ -97,6 +106,7 @@ void ShaderManager::tryUpdateDirty() {
     }
     m_dirty.clear();
   }
+#endif
 }
 
 std::unique_ptr<juce::OpenGLShaderProgram>
@@ -122,6 +132,7 @@ ShaderManager::createProgram(const ProgramMetadata& metadata,
   return program;
 }
 
+#ifdef GLYNTH_HSR
 std::string ShaderManager::readFile(const std::string& filename) const {
   auto path = std::filesystem::path(s_shader_dir).append(filename);
   std::ifstream infile(path.c_str());
@@ -160,6 +171,7 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
     }
   }
 }
+#endif
 
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context),

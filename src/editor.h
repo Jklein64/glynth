@@ -9,7 +9,12 @@
 #include <optional>
 #include <vector>
 
+#ifdef GLYNTH_HSR
 struct ShaderManager : public efsw::FileWatchListener {
+#else
+struct ShaderManager {
+
+#endif
   using ProgramId = std::string;
   using ShaderName = std::string;
 
@@ -19,12 +24,17 @@ struct ShaderManager : public efsw::FileWatchListener {
   bool useProgram(const ProgramId& id);
   void markDirty(const ShaderName& name);
   void tryUpdateDirty();
+#ifdef GLYNTH_HSR
   void handleFileAction(efsw::WatchID watchid, const std::string& dir,
                         const std::string& filename, efsw::Action action,
                         std::string old_filename) override;
+#endif
 
 private:
+#ifdef GLYNTH_HSR
+  // Needs to be macro'd out because the shader dir won't exist when distributed
   inline static auto s_shader_dir = std::filesystem::path(GLYNTH_SHADER_DIR);
+#endif
 
   struct ProgramMetadata {
     std::string vert_name;     // e.g. vert
@@ -40,7 +50,6 @@ private:
   std::unique_ptr<juce::OpenGLShaderProgram>
   createProgram(const ProgramMetadata& metadata, const char* vert_source,
                 const char* frag_source);
-  std::string readFile(const std::string& filename) const;
 
   juce::OpenGLContext& m_context;
   std::unordered_map<ShaderName, std::string> m_vert_sources;
@@ -50,10 +59,13 @@ private:
       m_programs;
   std::unordered_map<ProgramId, ProgramMetadata> m_metadata;
 
+#ifdef GLYNTH_HSR
   // For file watch synchronization
+  std::string readFile(const std::string& filename) const;
   efsw::FileWatcher m_file_watcher;
   std::vector<ProgramId> m_dirty;
   std::mutex m_mutex;
+#endif
 };
 
 class GlynthEditor final : public juce::AudioProcessorEditor,
