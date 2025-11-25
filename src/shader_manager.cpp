@@ -35,11 +35,18 @@ ShaderManager::ShaderManager(juce::OpenGLContext& context)
 bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
                                const ShaderName& frag_name) {
   assert(m_context.isAttached() && m_context.isActive());
+  assert(!m_programs.contains(id));
   int size; // JUCE's `dataSizeInBytes` field doesn't accept nullptr
   std::string vert_res_name = fmt::format("{}_glsl", vert_name);
   std::string frag_res_name = fmt::format("{}_glsl", frag_name);
-  auto vert_source = shaders::getNamedResource(vert_res_name.c_str(), size);
-  auto frag_source = shaders::getNamedResource(frag_res_name.c_str(), size);
+  auto vert_source =
+      m_vert_sources.contains(vert_name)
+          ? m_vert_sources.at(vert_name).c_str()
+          : shaders::getNamedResource(vert_res_name.c_str(), size);
+  auto frag_source =
+      m_frag_sources.contains(frag_name)
+          ? m_frag_sources.at(frag_name).c_str()
+          : shaders::getNamedResource(frag_res_name.c_str(), size);
   if (vert_source == nullptr) {
     fmt::println(stderr,
                  R"(Error loading shader with name "{}" (resource name "{}"))",
@@ -59,12 +66,11 @@ bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
     return false;
   }
 
-  m_vert_sources[vert_name] = std::string(vert_source);
-  m_frag_sources[frag_name] = std::string(frag_source);
-  m_name_to_id[vert_name] = id;
-  m_name_to_id[frag_name] = id;
-  m_metadata.insert_or_assign(id, metadata);
-  m_programs[id] = std::move(program);
+  // Don't insert if it's already there
+  m_vert_sources.insert(std::make_pair(vert_name, vert_source));
+  m_frag_sources.insert(std::make_pair(frag_name, frag_source));
+  m_metadata.insert(std::make_pair(id, metadata));
+  m_programs.insert(std::make_pair(id, std::move(program)));
   return true;
 }
 
@@ -79,9 +85,8 @@ bool ShaderManager::useProgram(const ProgramId& id) {
   }
 }
 
-void ShaderManager::markDirty(const ShaderName& name) {
+void ShaderManager::markDirty(const ProgramId& id) {
 #ifdef GLYNTH_HSR
-  auto id = m_name_to_id.at(name);
   std::lock_guard<std::mutex> lk(m_mutex);
   m_dirty.push_back(id);
 #else
@@ -149,27 +154,29 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
                                      std::string old_filename) {
   if (action == efsw::Actions::Modified) {
     std::string name = std::filesystem::path(filename).stem();
-    if (m_name_to_id.contains(name)) {
-      markDirty(name);
-      fmt::println(R"(Marked "{}" as dirty)", filename);
+    for (const auto& [id, metadata] : m_metadata) {
+      if (name == metadata.frag_name || name == metadata.vert_name) {
+        markDirty(id);
+        fmt::println(R"(Marked "{}" as dirty)", filename);
+      }
     }
+    // if (m_name_to_id.contains(name)) {
+    //   markDirty(name);
+    // }
   }
 
   else if (action == efsw::Actions::Moved) {
     std::string name = std::filesystem::path(old_filename).stem();
-    if (m_name_to_id.contains(name)) {
-      fmt::println(stderr,
-                   R"(Warning: rename "{}" -> "{}" invalidates hot reloading)",
-                   old_filename, filename);
-    }
+    fmt::println(
+        stderr,
+        R"(Warning: rename "{}" -> "{}" might invalidate hot reloading)",
+        old_filename, filename);
   }
 
   else if (action == efsw::Actions::Delete) {
     std::string name = std::filesystem::path(filename).stem();
-    if (m_name_to_id.contains(name)) {
-      fmt::println(stderr,
-                   R"(Warning: deletion of "{}" invalidates hot reloading)",
-                   filename);
-    }
+    fmt::println(stderr,
+                 R"(Warning: deletion of "{}" might invalidate hot reloading)",
+                 filename);
   }
 }

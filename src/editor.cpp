@@ -21,8 +21,8 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_shader_manager.addProgram("bg", "vert", "frag");
-  m_shader_manager.addProgram("rect", "vert", "rect_frag");
+  m_shader_manager.addProgram("bg", "ortho_vert", "background");
+  m_shader_manager.addProgram("rect", "ortho_vert", "rect_frag");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
   // This callback is not run on the main (message) thread; JUCE requires lock
@@ -43,10 +43,9 @@ void GlynthEditor::renderOpenGL() {
 
   using namespace juce::gl;
   juce::OpenGLHelpers::clear(juce::Colours::black);
-  // for (auto& component : m_shader_components) {
-  //   component->renderOpenGL();
-  // }
-  m_shader_components[1]->renderOpenGL();
+  for (auto& component : m_shader_components) {
+    component->renderOpenGL();
+  }
 }
 
 void GlynthEditor::openGLContextClosing() {}

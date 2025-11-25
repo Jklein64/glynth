@@ -17,7 +17,7 @@ public:
   bool addProgram(const ProgramId& id, const ShaderName& vert_name,
                   const ShaderName& frag_name);
   bool useProgram(const ProgramId& id);
-  void markDirty(const ShaderName& name);
+  void markDirty(const ProgramId& id);
   void tryUpdateDirty();
   void handleFileAction(efsw::WatchID watchid, const std::string& dir,
                         const std::string& filename, efsw::Action action,
@@ -47,7 +47,6 @@ private:
   juce::OpenGLContext& m_context;
   std::unordered_map<ShaderName, std::string> m_vert_sources;
   std::unordered_map<ShaderName, std::string> m_frag_sources;
-  std::unordered_map<ShaderName, ProgramId> m_name_to_id;
   std::unordered_map<ProgramId, std::unique_ptr<juce::OpenGLShaderProgram>>
       m_programs;
   std::unordered_map<ProgramId, ProgramMetadata> m_metadata;
