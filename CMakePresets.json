@@ -11,7 +11,8 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
-                "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+                "GLYNTH_HOT_SHADER_RELOAD": false
             }
         },
         {
@@ -25,7 +26,7 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
                 "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-                "GLYNTH_HOT_SHADER_RELOAD": "ON"
+                "GLYNTH_HOT_SHADER_RELOAD": true
             }
         }
     ]

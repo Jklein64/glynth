@@ -2,6 +2,7 @@
 #include "processor.h"
 #include "shaders.h"
 
+#include <filesystem>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #ifdef GLYNTH_HSR
@@ -140,6 +141,7 @@ std::string ShaderManager::readFile(const std::string& filename) const {
   buffer << infile.rdbuf();
   return buffer.str();
 }
+#endif
 
 void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
                                      const std::string& filename,
@@ -171,7 +173,6 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
     }
   }
 }
-#endif
 
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context),

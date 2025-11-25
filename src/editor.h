@@ -3,18 +3,15 @@
 #include "processor.h"
 
 #include <efsw/efsw.hpp>
-#include <filesystem>
 #include <glm/glm.hpp>
 #include <juce_opengl/juce_opengl.h>
 #include <optional>
 #include <vector>
-
 #ifdef GLYNTH_HSR
-struct ShaderManager : public efsw::FileWatchListener {
-#else
-struct ShaderManager {
-
+#include <filesystem>
 #endif
+
+struct ShaderManager : public efsw::FileWatchListener {
   using ProgramId = std::string;
   using ShaderName = std::string;
 
@@ -24,11 +21,9 @@ struct ShaderManager {
   bool useProgram(const ProgramId& id);
   void markDirty(const ShaderName& name);
   void tryUpdateDirty();
-#ifdef GLYNTH_HSR
   void handleFileAction(efsw::WatchID watchid, const std::string& dir,
                         const std::string& filename, efsw::Action action,
                         std::string old_filename) override;
-#endif
 
 private:
 #ifdef GLYNTH_HSR
