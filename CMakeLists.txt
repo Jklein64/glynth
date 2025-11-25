@@ -65,12 +65,17 @@ juce_add_plugin(
     PRODUCT_NAME glynth
 )
 
+file(
+    GLOB SHADER_FILES
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.glsl
+)
 juce_add_binary_data(
     shaders
     HEADER_NAME "shaders.h"
     NAMESPACE shaders
     SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/shader/frag.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/shader/vert.glsl"
+    ${SHADER_FILES}
 )
 
 target_sources(

@@ -4,7 +4,9 @@
 #include "shader_manager.h"
 
 #include <efsw/efsw.hpp>
+#include <fmt/base.h>
 #include <glm/glm.hpp>
+#include <juce_events/juce_events.h>
 #include <juce_opengl/juce_opengl.h>
 #include <vector>
 
@@ -22,19 +24,15 @@ public:
 
 private:
   GlynthProcessor& processor_ref;
+  juce::MessageManager::Lock m_message_lock;
   juce::OpenGLContext m_context;
   ShaderManager m_shader_manager;
   std::vector<std::unique_ptr<ShaderComponent>> m_shader_components;
 
-  // GLuint m_vbo;
-  // GLuint m_vao;
-  // std::vector<float> m_vertex_buffer;
-  // std::vector<uint32_t> m_index_buffer;
-
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthEditor)
 };
 
-class ShaderComponent {
+class ShaderComponent : public juce::Component {
 public:
   ShaderComponent(ShaderManager& shader_manager, const std::string& program_id);
   virtual ~ShaderComponent();
@@ -58,4 +56,14 @@ public:
                       const std::string& program_id);
 
   void render() override;
+};
+
+class RectComponent : public ShaderComponent {
+public:
+  RectComponent(ShaderManager& shader_manager, const std::string& program_id);
+
+  void render() override;
+  void paint(juce::Graphics& g) override;
+  void resized() override;
+  void mouseDown(const juce::MouseEvent& e) override;
 };
