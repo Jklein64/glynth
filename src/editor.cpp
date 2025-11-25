@@ -96,20 +96,22 @@ BackgroundComponent::BackgroundComponent(ShaderManager& shader_manager,
                                          const std::string& program_id)
     : ShaderComponent(shader_manager, program_id) {
   using namespace juce::gl;
+  glGenVertexArrays(1, &m_vao);
+  glGenBuffers(1, &m_vbo);
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
   glBindVertexArray(m_vao);
   std::vector<GLfloat> vertices = {                 // x y r g b
                                    -1, -1, 1, 0, 0, //
                                    3,  -1, 0, 1, 0, //
                                    -1, 3,  0, 0, 1};
-  std::vector<GLuint> indices = {0, 1, 2};
+  // std::vector<GLuint> indices = {0, 1, 2};
   glBufferData(GL_ARRAY_BUFFER,
-               static_cast<GLsizeiptr>(5 * sizeof(GLfloat) * vertices.size()),
+               static_cast<GLsizeiptr>(sizeof(GLfloat) * vertices.size()),
                vertices.data(), GL_STATIC_DRAW);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-               static_cast<GLsizeiptr>(sizeof(GLuint) * indices.size()),
-               indices.data(), GL_STATIC_DRAW);
+  // glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+  //              static_cast<GLsizeiptr>(sizeof(GLuint) * indices.size()),
+  //              indices.data(), GL_STATIC_DRAW);
   // Set position attribute
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
   glEnableVertexAttribArray(0);
@@ -122,6 +124,7 @@ BackgroundComponent::BackgroundComponent(ShaderManager& shader_manager,
 void BackgroundComponent::render() {
   using namespace juce::gl;
   glBindVertexArray(m_vao);
+  m_shader_manager.useProgram(m_program_id);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
 }
