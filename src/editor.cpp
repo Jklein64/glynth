@@ -8,7 +8,7 @@
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context) {
   // Must set size for window to show properly
-  setSize(750, 500);
+  setSize(840, 473);
   setOpaque(true);
   m_context.setOpenGLVersionRequired(juce::OpenGLContext::openGL3_2);
   m_context.setRenderer(this);
