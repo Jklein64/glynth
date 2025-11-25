@@ -8,7 +8,7 @@
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context) {
   // Must set size for window to show properly
-  setSize(400, 300);
+  setSize(750, 500);
   setOpaque(true);
   m_context.setOpenGLVersionRequired(juce::OpenGLContext::openGL3_2);
   m_context.setRenderer(this);
@@ -21,7 +21,7 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_shader_manager.addProgram("bg", "ortho_vert", "background");
+  m_shader_manager.addProgram("bg", "ortho_vert", "vt220");
   m_shader_manager.addProgram("rect", "ortho_vert", "rect_frag");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
