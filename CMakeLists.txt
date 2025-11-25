@@ -89,17 +89,23 @@ target_compile_definitions(
         $<${HSR_GEN}:GLYNTH_HSR>
         $<${HSR_GEN}:GLYNTH_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shader">
 )
+
 target_link_libraries(
     glynth
+    PRIVATE shaders
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+include(cmake/utils.cmake)
+target_link_libraries_system(
+    glynth
     PRIVATE
-        shaders
         juce::juce_audio_utils
         juce::juce_opengl
         fmt::fmt
         glm::glm
         efsw-static
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags
 )
