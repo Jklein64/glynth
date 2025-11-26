@@ -48,6 +48,9 @@ protected:
   std::string m_program_id;
   // OpenGL objects (assumes everything is an indexed mesh)
   GLuint m_vbo = 0, m_vao = 0, m_ebo = 0;
+
+private:
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShaderComponent)
 };
 
 class BackgroundComponent : public ShaderComponent {
@@ -56,6 +59,9 @@ public:
                       const std::string& program_id);
 
   void render() override;
+
+private:
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BackgroundComponent)
 };
 
 class RectComponent : public ShaderComponent {
@@ -66,4 +72,7 @@ public:
   void paint(juce::Graphics& g) override;
   void resized() override;
   void mouseDown(const juce::MouseEvent& e) override;
+
+private:
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RectComponent)
 };
