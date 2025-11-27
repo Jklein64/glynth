@@ -1,6 +1,12 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <random>
+
+class CorruptionSilencer {
+public:
+  void processBlock(juce::AudioBuffer<float>& buffer);
+};
 
 //==============================================================================
 class GlynthProcessor final : public juce::AudioProcessor {
@@ -45,6 +51,16 @@ private:
   //==============================================================================
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
+
+  juce::AudioParameterFloat* m_hpf_freq;
+  juce::AudioParameterFloat* m_hpf_res;
+  juce::AudioParameterFloat* m_lpf_freq;
+  juce::AudioParameterFloat* m_lpf_res;
+
+  CorruptionSilencer m_silencer;
+  std::random_device m_rd;
+  std::mt19937 m_gen;
+  std::uniform_real_distribution<float> m_dist;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };
