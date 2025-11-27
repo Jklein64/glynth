@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build (AU)",
+			"type": "cmake",
+			"group": "build",
+			"command": "build",
+			"targets": [
+				"glynth_AU"
+			],
+		}
+	]
+}
