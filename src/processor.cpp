@@ -124,7 +124,7 @@ void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer) {
       }
 
       if (should_silence) {
-        buffer.clear(ch, 0, buffer.getNumSamples());
+        buffer.clear();
         return;
       }
     }
