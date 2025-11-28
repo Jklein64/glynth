@@ -4,7 +4,8 @@
 #include <fmt/base.h>
 
 //==============================================================================
-GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
+GlynthProcessor::GlynthProcessor()
+    : AudioProcessor(s_io_layouts), m_gen(m_rd()), m_dist(-1.f, 1) {
   m_hpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_freq", 1), "High Cutoff",
       juce::NormalisableRange(20.0f, 20000.0f), 5.0f);
@@ -51,8 +52,12 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                    juce::MidiBuffer& midi_messages) {
   juce::ScopedNoDenormals noDenormals;
   for (int ch = 0; ch < getTotalNumOutputChannels(); ch++) {
+    for (int i = 0; i < buffer.getNumSamples(); i++) {
+      auto rand_value = m_dist(m_gen);
+      buffer.setSample(ch, i, rand_value);
+    }
     // Clear unused output buffers to avoid garbage data blasting speakers
-    buffer.clear(ch, 0, buffer.getNumSamples());
+    // buffer.clear(ch, 0, buffer.getNumSamples());
   }
 
   for (auto&& msg_metadata : midi_messages) {
