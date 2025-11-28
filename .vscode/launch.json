@@ -22,7 +22,7 @@
             "console": "internalConsole",
             "internalConsoleOptions": "openOnSessionStart",
             "program": "${workspaceFolder}/build/_deps/juce-build/extras/AudioPluginHost/AudioPluginHost_artefacts/Debug/AudioPluginHost.app/Contents/MacOS/AudioPluginHost",
-            "preLaunchTask": "build (Audio Plugin Host, Debug, MacOS)"
+            "preLaunchTask": "build (AU)"
         }
     ]
 }
