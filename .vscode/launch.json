@@ -11,6 +11,7 @@
             "console": "internalConsole",
             "internalConsoleOptions": "openOnSessionStart",
             "program": "${workspaceFolder}/build/glynth_artefacts/Debug/Standalone/glynth.app/Contents/MacOS/glynth",
+            "preLaunchTask": "build (Standalone)"
         },
         {
             // Make sure the AudioPluginHost is built. Build with

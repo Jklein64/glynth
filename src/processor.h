@@ -92,9 +92,19 @@ private:
 
 class BiquadFilter : public SubProcessor {
 public:
+  BiquadFilter(int num_channels);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer) override;
 
 private:
+  std::array<double, 3> b;
+  std::array<double, 3> a;
+
+  struct FilterState {
+    double x_prev = 0, x_prevprev = 0, y_prev = 0, y_prevprev = 0;
+  };
+
+  std::vector<FilterState> m_states;
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BiquadFilter)
 };

@@ -22,6 +22,7 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
   addParameter(m_lpf_res);
 
   m_processors.emplace_back(new NoiseGenerator());
+  m_processors.emplace_back(new BiquadFilter(2));
   m_processors.emplace_back(new CorruptionSilencer());
 }
 
@@ -134,6 +135,45 @@ void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer) {
   for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
     for (int i = 0; i < buffer.getNumSamples(); i++) {
       buffer.setSample(ch, i, m_dist(m_gen));
+    }
+  }
+}
+
+BiquadFilter::BiquadFilter(int num_channels) {
+  for (size_t ch = 0; ch < static_cast<size_t>(num_channels); ch++) {
+    // Creates a default state
+    m_states.emplace_back();
+  }
+}
+
+void BiquadFilter::prepareToPlay(double sample_rate, int) {
+  // low pass with cutoff at 2 kHz and Q = 1
+  double f0 = 2000;
+  double Q = 1;
+  double fs = sample_rate;
+  double w0 = juce::MathConstants<double>::twoPi * f0 / fs;
+  double cos_w0 = cos(w0);
+  double sin_w0 = sin(w0);
+  double alpha = sin_w0 / (2 * Q);
+
+  double a0 = 1 + alpha;
+  b = {(1 - cos_w0) / (2 * a0), (1 - cos_w0) / a0, (1 - cos_w0) / (2 * a0)};
+  a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
+}
+
+void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
+  for (size_t ch = 0; ch < static_cast<size_t>(buffer.getNumChannels()); ch++) {
+    for (int i = 0; i < buffer.getNumSamples(); i++) {
+      FilterState& state = m_states[ch];
+      double x = buffer.getSample(static_cast<int>(ch), i);
+      double y = (b[0] * x + b[1] * state.x_prev + b[2] * state.x_prevprev -
+                  a[1] * state.y_prev - a[2] * state.y_prevprev);
+      buffer.setSample(static_cast<int>(ch), i, static_cast<float>(y));
+      // Advance state one sample
+      state.x_prevprev = state.x_prev;
+      state.x_prev = x;
+      state.y_prevprev = state.y_prev;
+      state.y_prev = y;
     }
   }
 }

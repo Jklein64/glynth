@@ -9,6 +9,15 @@
 			"targets": [
 				"glynth_AU"
 			],
+		},
+		{
+			"label": "build (Standalone)",
+			"type": "cmake",
+			"group": "build",
+			"command": "build",
+			"targets": [
+				"glynth_Standalone"
+			],
 		}
 	]
 }
