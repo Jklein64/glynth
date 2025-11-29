@@ -6,23 +6,24 @@
 GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
   m_hpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_freq", 1), "High Cutoff",
-      juce::NormalisableRange(20.0f, 20000.0f), 5.0f);
+      juce::NormalisableRange(20.0f, 20000.0f), 20.0f);
   addParameter(m_hpf_freq);
   m_hpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_res", 1), "Resonance",
-      juce::NormalisableRange(0.1f, 100.0f), 0.71f);
+      juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_hpf_res);
   m_lpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_freq", 1), "Low Cutoff",
-      juce::NormalisableRange(20.0f, 20000.0f), 5.0f);
+      juce::NormalisableRange(20.0f, 20000.0f), 20000.0f);
   addParameter(m_lpf_freq);
   m_lpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_res", 1), "Resonance",
-      juce::NormalisableRange(0.1f, 100.0f), 0.71f);
+      juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_lpf_res);
 
   m_processors.emplace_back(new NoiseGenerator());
-  m_processors.emplace_back(new BiquadFilter(2));
+  m_processors.emplace_back(
+      new BiquadFilter(getTotalNumOutputChannels(), m_lpf_freq, m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer());
 }
 
@@ -129,7 +130,7 @@ void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer) {
   }
 }
 
-NoiseGenerator::NoiseGenerator() : m_gen(m_rd()), m_dist(-1.0f, 1.0f) {}
+NoiseGenerator::NoiseGenerator() : m_gen(m_rd()), m_dist(-0.5f, 0.5f) {}
 
 void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer) {
   for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
@@ -139,7 +140,13 @@ void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer) {
   }
 }
 
-BiquadFilter::BiquadFilter(int num_channels) {
+BiquadFilter::BiquadFilter(int num_channels,
+                           juce::AudioParameterFloat* freq_param,
+                           juce::AudioParameterFloat* res_param)
+    : m_freq_param(freq_param), m_res_param(res_param) {
+  // Initialize from param values
+  m_freq = *m_freq_param;
+  m_res = *m_res_param;
   for (size_t ch = 0; ch < static_cast<size_t>(num_channels); ch++) {
     // Creates a default state
     m_states.emplace_back();
@@ -147,23 +154,16 @@ BiquadFilter::BiquadFilter(int num_channels) {
 }
 
 void BiquadFilter::prepareToPlay(double sample_rate, int) {
-  // low pass with cutoff at 2 kHz and Q = 1
-  double f0 = 2000;
-  double Q = 1;
-  double fs = sample_rate;
-  double w0 = juce::MathConstants<double>::twoPi * f0 / fs;
-  double cos_w0 = cos(w0);
-  double sin_w0 = sin(w0);
-  double alpha = sin_w0 / (2 * Q);
-
-  double a0 = 1 + alpha;
-  b = {(1 - cos_w0) / (2 * a0), (1 - cos_w0) / a0, (1 - cos_w0) / (2 * a0)};
-  a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
+  m_sample_rate = sample_rate;
+  configure(m_freq, m_res);
 }
 
 void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
   for (size_t ch = 0; ch < static_cast<size_t>(buffer.getNumChannels()); ch++) {
     for (int i = 0; i < buffer.getNumSamples(); i++) {
+      // Ensure filter is using most recent param values
+      configure(*m_freq_param, *m_res_param);
+      // Apply the filter
       FilterState& state = m_states[ch];
       double x = buffer.getSample(static_cast<int>(ch), i);
       double y = (b[0] * x + b[1] * state.x_prev + b[2] * state.x_prevprev -
@@ -175,5 +175,22 @@ void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
       state.y_prevprev = state.y_prev;
       state.y_prev = y;
     }
+  }
+}
+
+void BiquadFilter::configure(double freq, double res) {
+  if (juce::approximatelyEqual(m_freq, freq) &&
+      juce::approximatelyEqual(m_res, res)) {
+    // Don't update values if no changes
+    return;
+  } else {
+    double w0 = juce::MathConstants<double>::twoPi * freq / m_sample_rate;
+    double cos_w0 = cos(w0);
+    double sin_w0 = sin(w0);
+    double alpha = sin_w0 / (2 * res);
+
+    double a0 = 1 + alpha;
+    b = {(1 - cos_w0) / (2 * a0), (1 - cos_w0) / a0, (1 - cos_w0) / (2 * a0)};
+    a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
   }
 }

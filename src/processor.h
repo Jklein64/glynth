@@ -92,13 +92,21 @@ private:
 
 class BiquadFilter : public SubProcessor {
 public:
-  BiquadFilter(int num_channels);
+  BiquadFilter(int num_channels, juce::AudioParameterFloat* freq_param,
+               juce::AudioParameterFloat* res_param);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer) override;
 
 private:
+  void configure(double f0, double Q);
+
   std::array<double, 3> b;
   std::array<double, 3> a;
+  double m_sample_rate;
+  double m_freq;
+  double m_res;
+  juce::AudioParameterFloat* m_freq_param;
+  juce::AudioParameterFloat* m_res_param;
 
   struct FilterState {
     double x_prev = 0, x_prevprev = 0, y_prev = 0, y_prevprev = 0;
