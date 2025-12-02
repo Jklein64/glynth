@@ -6,7 +6,8 @@
 class SubProcessor {
 public:
   virtual ~SubProcessor() = default;
-  virtual void processBlock(juce::AudioBuffer<float>& buffer) = 0;
+  virtual void processBlock(juce::AudioBuffer<float>& buffer,
+                            juce::MidiBuffer& midi_messages) = 0;
 
   inline virtual void prepareToPlay(double sample_rate, int samples_per_block) {
     // Default prepareToPlay is a no-op
@@ -71,7 +72,8 @@ private:
 class CorruptionSilencer : public SubProcessor {
 public:
   CorruptionSilencer() = default;
-  void processBlock(juce::AudioBuffer<float>& buffer) override;
+  void processBlock(juce::AudioBuffer<float>& buffer,
+                    juce::MidiBuffer& midi_messages) override;
 
 private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CorruptionSilencer)
@@ -80,7 +82,8 @@ private:
 class NoiseGenerator : public SubProcessor {
 public:
   NoiseGenerator();
-  void processBlock(juce::AudioBuffer<float>& buffer) override;
+  void processBlock(juce::AudioBuffer<float>& buffer,
+                    juce::MidiBuffer& midi_messages) override;
 
 private:
   std::random_device m_rd;
@@ -95,7 +98,8 @@ public:
   BiquadFilter(int num_channels, juce::AudioParameterFloat* freq_param,
                juce::AudioParameterFloat* res_param);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
-  void processBlock(juce::AudioBuffer<float>& buffer) override;
+  void processBlock(juce::AudioBuffer<float>& buffer,
+                    juce::MidiBuffer& midi_messages) override;
 
 protected:
   virtual void configure(float freq, float res) = 0;

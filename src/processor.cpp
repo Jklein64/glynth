@@ -68,7 +68,7 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   }
 
   for (auto& processor : m_processors) {
-    processor->processBlock(buffer);
+    processor->processBlock(buffer, midi_messages);
   }
 }
 
@@ -96,7 +96,8 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
 
 //==============================================================================
 
-void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer) {
+void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer,
+                                      juce::MidiBuffer&) {
   // Check output for earrape and silence buffer if present
   bool warned = false;
   for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
@@ -134,7 +135,8 @@ void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer) {
 
 NoiseGenerator::NoiseGenerator() : m_gen(m_rd()), m_dist(-0.5f, 0.5f) {}
 
-void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer) {
+void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer,
+                                  juce::MidiBuffer&) {
   for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
     for (int i = 0; i < buffer.getNumSamples(); i++) {
       buffer.setSample(ch, i, m_dist(m_gen));
@@ -160,7 +162,8 @@ void BiquadFilter::prepareToPlay(double sample_rate, int) {
   configure(m_freq, m_res);
 }
 
-void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
+void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer,
+                                juce::MidiBuffer&) {
   for (size_t ch = 0; ch < static_cast<size_t>(buffer.getNumChannels()); ch++) {
     for (int i = 0; i < buffer.getNumSamples(); i++) {
       // Ensure filter is using most recent param values
