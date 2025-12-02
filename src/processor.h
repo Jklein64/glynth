@@ -97,14 +97,14 @@ public:
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer) override;
 
-private:
-  void configure(double f0, double Q);
+protected:
+  virtual void configure(float freq, float res) = 0;
 
   std::array<double, 3> b;
   std::array<double, 3> a;
   double m_sample_rate;
-  double m_freq;
-  double m_res;
+  float m_freq;
+  float m_res;
   juce::AudioParameterFloat* m_freq_param;
   juce::AudioParameterFloat* m_res_param;
 
@@ -114,5 +114,30 @@ private:
 
   std::vector<FilterState> m_states;
 
+private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BiquadFilter)
+};
+
+class LowPassFilter : public BiquadFilter {
+public:
+  // Inherit the constructor
+  using BiquadFilter::BiquadFilter;
+
+protected:
+  void configure(float freq, float res) override;
+
+private:
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LowPassFilter)
+};
+
+class HighPassFilter : public BiquadFilter {
+public:
+  // Inherit the constructor
+  using BiquadFilter::BiquadFilter;
+
+protected:
+  void configure(float freq, float res) override;
+
+private:
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };

@@ -23,7 +23,9 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
 
   m_processors.emplace_back(new NoiseGenerator());
   m_processors.emplace_back(
-      new BiquadFilter(getTotalNumOutputChannels(), m_lpf_freq, m_lpf_res));
+      new HighPassFilter(getTotalNumOutputChannels(), m_hpf_freq, m_hpf_res));
+  m_processors.emplace_back(
+      new LowPassFilter(getTotalNumOutputChannels(), m_lpf_freq, m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer());
 }
 
@@ -162,7 +164,12 @@ void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
   for (size_t ch = 0; ch < static_cast<size_t>(buffer.getNumChannels()); ch++) {
     for (int i = 0; i < buffer.getNumSamples(); i++) {
       // Ensure filter is using most recent param values
-      configure(*m_freq_param, *m_res_param);
+      float freq = m_freq_param->get();
+      float res = m_res_param->get();
+      if (!juce::exactlyEqual(freq, m_freq) ||
+          !juce::exactlyEqual(res, m_res)) {
+        configure(freq, res);
+      }
       // Apply the filter
       FilterState& state = m_states[ch];
       double x = buffer.getSample(static_cast<int>(ch), i);
@@ -178,19 +185,28 @@ void BiquadFilter::processBlock(juce::AudioBuffer<float>& buffer) {
   }
 }
 
-void BiquadFilter::configure(double freq, double res) {
-  if (juce::approximatelyEqual(m_freq, freq) &&
-      juce::approximatelyEqual(m_res, res)) {
-    // Don't update values if no changes
-    return;
-  } else {
-    double w0 = juce::MathConstants<double>::twoPi * freq / m_sample_rate;
-    double cos_w0 = cos(w0);
-    double sin_w0 = sin(w0);
-    double alpha = sin_w0 / (2 * res);
+void LowPassFilter::configure(float freq, float res) {
+  m_freq = freq;
+  m_res = res;
+  double w0 = juce::MathConstants<double>::twoPi * freq / m_sample_rate;
+  double cos_w0 = cos(w0);
+  double sin_w0 = sin(w0);
+  double alpha = sin_w0 / (2 * res);
 
-    double a0 = 1 + alpha;
-    b = {(1 - cos_w0) / (2 * a0), (1 - cos_w0) / a0, (1 - cos_w0) / (2 * a0)};
-    a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
-  }
+  double a0 = 1 + alpha;
+  b = {(1 - cos_w0) / (2 * a0), (1 - cos_w0) / a0, (1 - cos_w0) / (2 * a0)};
+  a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
+}
+
+void HighPassFilter::configure(float freq, float res) {
+  m_freq = freq;
+  m_res = res;
+  double w0 = juce::MathConstants<double>::twoPi * freq / m_sample_rate;
+  double cos_w0 = cos(w0);
+  double sin_w0 = sin(w0);
+  double alpha = sin_w0 / (2 * res);
+
+  double a0 = 1 + alpha;
+  b = {(1 + cos_w0) / (2 * a0), -(1 + cos_w0) / a0, (1 + cos_w0) / (2 * a0)};
+  a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
 }
