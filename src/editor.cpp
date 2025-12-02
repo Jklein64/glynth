@@ -25,17 +25,19 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("rect", "ortho_vert", "rect_frag");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
+  auto rect2 = std::make_unique<RectComponent>(m_shader_manager, "rect");
   // This callback is not run on the main (message) thread; JUCE requires lock
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
-  fmt::println("bg bounds: x = {}, y = {}, w = {}, h = {}", bg->getX(),
-               bg->getY(), bg->getWidth(), bg->getHeight());
   addAndMakeVisible(rect.get());
-  rect->setBounds(100, 100, 200, 200);
+  rect->setBounds(100, 100, 100, 100);
+  addAndMakeVisible(rect2.get());
+  rect2->setBounds(200, 200, 100, 100);
   m_message_lock.exit();
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
+  m_shader_components.push_back(std::move(rect2));
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -52,67 +54,62 @@ void GlynthEditor::openGLContextClosing() {}
 
 ShaderComponent::ShaderComponent(ShaderManager& shader_manager,
                                  const std::string& program_id)
-    : m_shader_manager(shader_manager), m_program_id(program_id) {
+    : m_shader_manager(shader_manager), m_program_id(program_id) {}
+
+BackgroundComponent::BackgroundComponent(ShaderManager& shader_manager,
+                                         const std::string& program_id)
+    : ShaderComponent(shader_manager, program_id) {
+  using namespace juce::gl;
+  glGenBuffers(1, &m_vbo);
+  glGenVertexArrays(1, &m_vao);
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  std::array<GLfloat, 6> vertices = {-1, -1, 3, -1, -1, 3};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(),
+               GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+  glEnableVertexAttribArray(0);
+  glBindVertexArray(0);
+}
+
+BackgroundComponent::~BackgroundComponent() {
+  using namespace juce::gl;
+  glDeleteBuffers(1, &m_vbo);
+  glDeleteVertexArrays(1, &m_vao);
+}
+
+void BackgroundComponent::renderOpenGL() {
+  using namespace juce::gl;
+  glBindVertexArray(m_vao); // Also binds m_ebo
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  m_shader_manager.useProgram(m_program_id);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+  glBindVertexArray(0);
+}
+
+RectComponent::RectComponent(ShaderManager& shader_manager,
+                             const std::string& program_id)
+    : ShaderComponent(shader_manager, program_id) {
   using namespace juce::gl;
   glGenBuffers(1, &m_vbo);
   glGenBuffers(1, &m_ebo);
   glGenVertexArrays(1, &m_vao);
-  // Guarantee the correct bindings are used during construction
-  glBindVertexArray(m_vao);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
 }
 
-ShaderComponent::~ShaderComponent() {
+RectComponent::~RectComponent() {
   using namespace juce::gl;
   glDeleteBuffers(1, &m_vbo);
   glDeleteBuffers(1, &m_ebo);
   glDeleteVertexArrays(1, &m_vao);
 }
 
-void ShaderComponent::renderOpenGL() {
+void RectComponent::renderOpenGL() {
   using namespace juce::gl;
-  // Guarantee the correct bindings are used during rendering
   glBindVertexArray(m_vao); // Also binds m_ebo
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
-  render();
-}
-
-BackgroundComponent::BackgroundComponent(ShaderManager& shader_manager,
-                                         const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id) {
-  using namespace juce::gl;
-  std::array<GLfloat, 15> vertices = {                 // x y r g b
-                                      -1, -1, 1, 0, 0, //
-                                      3,  -1, 0, 1, 0, //
-                                      -1, 3,  0, 0, 1};
-  std::array<GLuint, 3> indices = {0, 1, 2};
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(),
-               GL_STATIC_DRAW);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(),
-               GL_STATIC_DRAW);
-  // Set position attribute
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(0);
-  // Set color attribute
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                        reinterpret_cast<GLvoid*>(sizeof(float) * 2));
-  glEnableVertexAttribArray(1);
-}
-
-void BackgroundComponent::render() {
-  using namespace juce::gl;
-  glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
-}
-
-RectComponent::RectComponent(ShaderManager& shader_manager,
-                             const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id) {}
-
-void RectComponent::render() {
-  using namespace juce::gl;
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+  glBindVertexArray(0);
 }
 
 void RectComponent::paint(juce::Graphics& g) {
@@ -122,6 +119,9 @@ void RectComponent::paint(juce::Graphics& g) {
 
 void RectComponent::resized() {
   using namespace juce::gl;
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
   // Convert to the portion of the canonical view volume this takes up
   auto bounds = getBounds();
   auto parent_width = static_cast<float>(getParentWidth());
@@ -144,10 +144,5 @@ void RectComponent::resized() {
                GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
   glEnableVertexAttribArray(0);
-}
-
-void RectComponent::mouseDown(const juce::MouseEvent& e) {
-  fmt::println("mouse down: screen = ({}, {}), plain = ({}, {})",
-               e.getMouseDownScreenX(), e.getMouseDownScreenY(),
-               e.getMouseDownX(), e.getMouseDownY());
+  glBindVertexArray(0);
 }

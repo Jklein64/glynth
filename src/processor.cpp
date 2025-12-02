@@ -75,8 +75,8 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 }
 
 juce::AudioProcessorEditor* GlynthProcessor::createEditor() {
-  return new juce::GenericAudioProcessorEditor(*this);
-  // return new GlynthEditor(*this);
+  // return new juce::GenericAudioProcessorEditor(*this);
+  return new GlynthEditor(*this);
 }
 
 void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {

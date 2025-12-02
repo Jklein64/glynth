@@ -35,19 +35,12 @@ private:
 class ShaderComponent : public juce::Component {
 public:
   ShaderComponent(ShaderManager& shader_manager, const std::string& program_id);
-  virtual ~ShaderComponent();
-
-  void renderOpenGL();
-  // Do not call render() directly in the renderOpenGL method of
-  // `juce::OpenGLRenderer`. Call `renderOpenGL()` instead.
-  virtual void render() = 0;
+  virtual void renderOpenGL() = 0;
 
 protected:
   ShaderManager& m_shader_manager;
   // ID of the shader program associated with this component
   std::string m_program_id;
-  // OpenGL objects (assumes everything is an indexed mesh)
-  GLuint m_vbo = 0, m_vao = 0, m_ebo = 0;
 
 private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShaderComponent)
@@ -57,22 +50,23 @@ class BackgroundComponent : public ShaderComponent {
 public:
   BackgroundComponent(ShaderManager& shader_manager,
                       const std::string& program_id);
-
-  void render() override;
+  ~BackgroundComponent() override;
+  void renderOpenGL() override;
 
 private:
+  GLuint m_vbo = 0, m_vao = 0;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BackgroundComponent)
 };
 
 class RectComponent : public ShaderComponent {
 public:
   RectComponent(ShaderManager& shader_manager, const std::string& program_id);
-
-  void render() override;
+  ~RectComponent() override;
+  void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
-  void mouseDown(const juce::MouseEvent& e) override;
 
 private:
+  GLuint m_vbo = 0, m_vao = 0, m_ebo = 0;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RectComponent)
 };
