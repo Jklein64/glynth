@@ -1,6 +1,7 @@
 #pragma once
 
 #include <efsw/efsw.hpp>
+#include <glm/glm.hpp>
 #include <juce_opengl/juce_opengl.h>
 #include <vector>
 
@@ -17,6 +18,8 @@ public:
   bool addProgram(const ProgramId& id, const ShaderName& vert_name,
                   const ShaderName& frag_name);
   bool useProgram(const ProgramId& id);
+  bool setUniform(const ProgramId& id, const std::string& name,
+                  glm::vec2 value);
   void markDirty(const ProgramId& id);
   void tryUpdateDirty();
   void handleFileAction(efsw::WatchID watchid, const std::string& dir,
@@ -50,6 +53,8 @@ private:
   std::unordered_map<ProgramId, std::unique_ptr<juce::OpenGLShaderProgram>>
       m_programs;
   std::unordered_map<ProgramId, ProgramMetadata> m_metadata;
+  std::unordered_map<ProgramId, std::vector<std::function<void()>>>
+      m_uniform_refreshers;
 
 #ifdef GLYNTH_HSR
   // For file watch synchronization

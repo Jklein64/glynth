@@ -85,6 +85,28 @@ bool ShaderManager::useProgram(const ProgramId& id) {
   }
 }
 
+bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
+                               glm::vec2 value) {
+  assert(m_context.isAttached() && m_context.isActive());
+  if (auto it = m_programs.find(id); it != m_programs.end()) {
+    it->second->setUniform(name.c_str(), value.x, value.y);
+#ifdef GLYNTH_HSR
+    // Add callback to refresh the uniforms when the shader gets reloaded
+    m_uniform_refreshers[id].push_back([this, id, name, value] {
+      if (auto it2 = m_programs.find(id); it2 != m_programs.end()) {
+        it2->second->setUniform(name.c_str(), value.x, value.y);
+      } else {
+        fmt::println(stderr, R"(No program found with id "{}")", id);
+      }
+    });
+#endif
+    return true;
+  } else {
+    fmt::println(stderr, R"(No program found with id "{}")", id);
+    return false;
+  }
+}
+
 void ShaderManager::markDirty(const ProgramId& id) {
 #ifdef GLYNTH_HSR
   std::lock_guard<std::mutex> lk(m_mutex);
@@ -104,6 +126,12 @@ void ShaderManager::tryUpdateDirty() {
       auto program =
           createProgram(metadata, vert_source.c_str(), frag_source.c_str());
       if (program != nullptr) {
+        program->use();
+        if (m_uniform_refreshers.contains(id)) {
+          for (auto& refresher : m_uniform_refreshers.at(id)) {
+            refresher();
+          }
+        }
         m_programs.insert_or_assign(id, std::move(program));
         m_vert_sources.insert_or_assign(id, std::move(vert_source));
         m_frag_sources.insert_or_assign(id, std::move(frag_source));

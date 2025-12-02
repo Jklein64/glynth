@@ -22,22 +22,23 @@ void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("bg", "ortho_vert", "vt220");
-  m_shader_manager.addProgram("rect", "ortho_vert", "rect_frag");
+  m_shader_manager.addProgram("rect", "rect_vert", "rect_frag");
+  m_shader_manager.addProgram("knob", "rect_vert", "knob_frag");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
-  auto rect2 = std::make_unique<RectComponent>(m_shader_manager, "rect");
+  auto knob = std::make_unique<RectComponent>(m_shader_manager, "knob");
   // This callback is not run on the main (message) thread; JUCE requires lock
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
-  addAndMakeVisible(rect2.get());
-  rect2->setBounds(200, 200, 100, 100);
+  addAndMakeVisible(knob.get());
+  knob->setBounds(200, 200, 100, 100);
   m_message_lock.exit();
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
-  m_shader_components.push_back(std::move(rect2));
+  m_shader_components.push_back(std::move(knob));
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -113,7 +114,7 @@ void RectComponent::renderOpenGL() {
 }
 
 void RectComponent::paint(juce::Graphics& g) {
-  g.setColour(juce::Colours::green);
+  g.setColour(juce::Colours::white);
   g.drawRect(getLocalBounds());
 }
 
@@ -124,25 +125,43 @@ void RectComponent::resized() {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
   // Convert to the portion of the canonical view volume this takes up
   auto bounds = getBounds();
+  auto width = bounds.getWidth();
+  auto height = bounds.getHeight();
   auto parent_width = static_cast<float>(getParentWidth());
   auto parent_height = static_cast<float>(getParentHeight());
   float x = static_cast<float>(bounds.getX()) / parent_width * 2 - 1;
   float y = (1 - static_cast<float>(bounds.getY()) / parent_height) * 2 - 1;
-  float w = static_cast<float>(bounds.getWidth()) / parent_width * 2;
-  float h = static_cast<float>(bounds.getHeight()) / parent_height * 2;
+  float w = static_cast<float>(width) / parent_width * 2;
+  float h = static_cast<float>(height) / parent_height * 2;
   // This seems backward because the JUCE coordinates are y-down but the ones
   // OpenGL needs are y-up, and JUCE 0,0 is the top left
   // 1 --- 2    x,y ------ x+w,y
   // |  /  |     |     /      |
   // 0 --- 3    x,y-h ---- x+w,y-h
-  std::array<GLfloat, 8> vertices = {x, y - h, x, y, x + w, y, x + w, y - h};
+  std::array<RectVertex, 4> vertices = {
+      RectVertex{.pos = glm::vec2(x, y - h), .uv = glm::vec2(0, 0)},
+      RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y - h), .uv = glm::vec2(1, 0)}};
   std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
-  std::vector<float> tmp(vertices.begin(), vertices.end());
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(),
                GL_STATIC_DRAW);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(),
                GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex), nullptr);
+  glVertexAttribPointer(
+      1, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex),
+      reinterpret_cast<const void*>(offsetof(RectVertex, uv)));
   glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
   glBindVertexArray(0);
+  // Must use shader before setting uniforms
+  m_shader_manager.useProgram(m_program_id);
+  // Apply pixel scale so that units are physical pixels
+  auto& desktop = juce::Desktop::getInstance();
+  auto* display = desktop.getDisplays().getPrimaryDisplay();
+  double scale = display ? display->scale : 1.0;
+  auto resolution = glm::vec2(width * scale, height * scale);
+  fmt::println("setting u_resolution = ({}, {})", resolution.x, resolution.y);
+  m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
 }

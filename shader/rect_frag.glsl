@@ -1,11 +1,12 @@
 #version 330 core
 
+uniform vec2 u_resolution;
+
 in vec2 texcoord;
 out vec4 frag_color;
 
 void main() {
-    frag_color = vec4(1.0, 0.0, 0.0, 1.0);
-    // frag_color = vec4(texcoord.zy, 0.0, 1.0);
-    // frag_color = vec3(texcoord.xy, 0.0);
-    // frag_color = vec3(0.5, 0.0, 0.0);
+    float dist = distance(texcoord, vec2(0.0, 0.0));
+    float scale = exp(-(dist * dist));
+    frag_color = scale * vec4(1.0, 0.0, 0.0, 1.0);
 }

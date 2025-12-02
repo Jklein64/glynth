@@ -67,6 +67,11 @@ public:
   void resized() override;
 
 private:
+  struct RectVertex {
+    glm::vec2 pos;
+    glm::vec2 uv;
+  };
+
   GLuint m_vbo = 0, m_vao = 0, m_ebo = 0;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RectComponent)
 };
