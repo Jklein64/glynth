@@ -239,17 +239,27 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
 
       if (msg.isNoteOn()) {
         auto note = msg.getNoteNumber();
-        // TODO least-recently used instead of last
+        // Use first inactive voice, or voice with lowest ID if all are active
+        size_t min_id_idx = 0;
+        bool handled = false;
         for (size_t k = 0; k < m_voices.size(); k++) {
-          if (!m_voices[k].active || k == m_voices.size() - 1) {
+          if (!m_voices[k].active) {
+            // Found an inactive voice to use
             m_voices[k].configure(note, m_sample_rate);
+            handled = true;
             break;
+          } else if (m_voices[k].id < m_voices[min_id_idx].id) {
+            min_id_idx = k;
           }
+        }
+        if (!handled) {
+          // Use voice with lowest ID
+          m_voices[min_id_idx].configure(note, m_sample_rate);
         }
       } else if (msg.isNoteOff()) {
         auto note = msg.getNoteNumber();
         for (auto& voice : m_voices) {
-          if (voice.m_note == note) {
+          if (voice.note == note) {
             voice.reset();
           }
         }
@@ -271,12 +281,19 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
   }
 }
 
-void SynthVoice::configure(int note, double sample_rate) {
+SynthVoice::SynthVoice() {
+  id = s_next_id;
+  s_next_id++;
+}
+
+void SynthVoice::configure(int note_number, double sample_rate) {
   active = true;
+  note = note_number;
   m_angle = 0;
-  m_note = note;
   auto freq = juce::MidiMessage::getMidiNoteInHertz(note);
   m_inc = freq / sample_rate * juce::MathConstants<double>::twoPi;
+  id = s_next_id;
+  s_next_id++;
 }
 
 double SynthVoice::sample() {

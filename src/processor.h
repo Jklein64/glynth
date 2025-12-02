@@ -147,13 +147,16 @@ private:
 };
 
 struct SynthVoice {
-  void configure(int note, double sample_rate);
+  SynthVoice();
+  void configure(int note_number, double sample_rate);
   double sample();
   void reset();
-  int m_note;
+  int id;
+  int note;
   bool active;
 
 private:
+  inline static int s_next_id = 0;
   double m_angle;
   double m_inc;
 };
