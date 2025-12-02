@@ -21,7 +21,8 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_lpf_res);
 
-  m_processors.emplace_back(new NoiseGenerator());
+  // m_processors.emplace_back(new NoiseGenerator());
+  m_processors.emplace_back(new Synth());
   m_processors.emplace_back(
       new HighPassFilter(getTotalNumOutputChannels(), m_hpf_freq, m_hpf_res));
   m_processors.emplace_back(
@@ -60,12 +61,13 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(ch, 0, buffer.getNumSamples());
   }
 
-  for (auto&& msg_metadata : midi_messages) {
-    auto sample = msg_metadata.samplePosition;
-    auto&& msg = msg_metadata.getMessage();
-    auto&& description = msg.getDescription().toStdString();
-    fmt::println("MIDI message at buffer sample {}: {}", sample, description);
-  }
+  // for (auto&& msg_metadata : midi_messages) {
+  //   auto sample = msg_metadata.samplePosition;
+  //   auto&& msg = msg_metadata.getMessage();
+  //   auto&& description = msg.getDescription().toStdString();
+  //   fmt::println("MIDI message at buffer sample {}: {}", sample,
+  //   description);
+  // }
 
   for (auto& processor : m_processors) {
     processor->processBlock(buffer, midi_messages);
@@ -212,4 +214,49 @@ void HighPassFilter::configure(float freq, float res) {
   double a0 = 1 + alpha;
   b = {(1 + cos_w0) / (2 * a0), -(1 + cos_w0) / a0, (1 + cos_w0) / (2 * a0)};
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
+}
+
+Synth::Synth() {}
+
+void Synth::prepareToPlay(double sample_rate, int) {
+  m_sample_rate = sample_rate;
+}
+
+void Synth::processBlock(juce::AudioBuffer<float>& buffer,
+                         juce::MidiBuffer& midi_messages) {
+  juce::MidiBufferIterator it = midi_messages.begin();
+  for (int i = 0; i < buffer.getNumSamples(); i++) {
+    // Handle all midi messages happening at sample i
+    while (it != midi_messages.end() && (*it).samplePosition == i) {
+      // Process the midi message
+      auto&& msg = (*it).getMessage();
+      auto&& description = msg.getDescription().toStdString();
+      fmt::println("MIDI message at buffer sample {}: {}", i, description);
+
+      if (msg.isNoteOn()) {
+        m_velocity = msg.getVelocity();
+        auto note_number = msg.getNoteNumber();
+        // NB: AudioPluginHost is wrong by an octave, it labels C5 as C4
+        m_freq = juce::MidiMessage::getMidiNoteInHertz(note_number);
+        m_inc = m_freq / m_sample_rate * juce::MathConstants<double>::twoPi;
+      } else if (msg.isNoteOff()) {
+        m_velocity = 0;
+        // Reset phasor
+        m_angle = 0;
+      }
+
+      it++;
+    }
+
+    if (m_velocity > 0) {
+      double value = 0.1 * std::sin(m_angle);
+      for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
+        buffer.setSample(ch, i, static_cast<float>(value));
+      }
+      m_angle += m_inc;
+      if (m_angle > juce::MathConstants<double>::twoPi) {
+        m_angle -= juce::MathConstants<double>::twoPi;
+      }
+    }
+  }
 }

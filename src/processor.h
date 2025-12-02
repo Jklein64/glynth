@@ -145,3 +145,21 @@ protected:
 private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };
+
+class Synth : public SubProcessor {
+public:
+  Synth();
+  void prepareToPlay(double sample_rate, int samples_per_block) override;
+  void processBlock(juce::AudioBuffer<float>& buffer,
+                    juce::MidiBuffer& midi_messages) override;
+
+private:
+  // Single voice
+  double m_sample_rate;
+  double m_freq;
+  double m_angle;
+  double m_inc;
+  uint8_t m_velocity = 0;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
+};
