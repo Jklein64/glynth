@@ -90,7 +90,7 @@ void ShaderManager::markDirty(const ProgramId& id) {
   std::lock_guard<std::mutex> lk(m_mutex);
   m_dirty.push_back(id);
 #else
-  juce::ignoreUnused(name);
+  juce::ignoreUnused(id);
 #endif
 }
 
