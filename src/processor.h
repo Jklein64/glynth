@@ -146,6 +146,17 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };
 
+struct SynthVoice {
+  void configure(double freq, double sample_rate, uint8_t velocity = 127);
+  double sample();
+  bool active();
+  void reset();
+
+private:
+  double m_angle;
+  double m_inc;
+  uint8_t m_velocity = 0;
+};
 class Synth : public SubProcessor {
 public:
   Synth();
@@ -154,12 +165,8 @@ public:
                     juce::MidiBuffer& midi_messages) override;
 
 private:
-  // Single voice
+  SynthVoice m_voice;
   double m_sample_rate;
-  double m_freq;
-  double m_angle;
-  double m_inc;
-  uint8_t m_velocity = 0;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
 };

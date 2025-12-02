@@ -234,29 +234,44 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       fmt::println("MIDI message at buffer sample {}: {}", i, description);
 
       if (msg.isNoteOn()) {
-        m_velocity = msg.getVelocity();
         auto note_number = msg.getNoteNumber();
-        // NB: AudioPluginHost is wrong by an octave, it labels C5 as C4
-        m_freq = juce::MidiMessage::getMidiNoteInHertz(note_number);
-        m_inc = m_freq / m_sample_rate * juce::MathConstants<double>::twoPi;
+        auto freq = juce::MidiMessage::getMidiNoteInHertz(note_number);
+        m_voice.configure(freq, m_sample_rate);
       } else if (msg.isNoteOff()) {
-        m_velocity = 0;
-        // Reset phasor
-        m_angle = 0;
+        m_voice.reset();
       }
 
       it++;
     }
 
-    if (m_velocity > 0) {
-      double value = 0.1 * std::sin(m_angle);
+    if (m_voice.active()) {
+      double value = m_voice.sample();
       for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
         buffer.setSample(ch, i, static_cast<float>(value));
       }
-      m_angle += m_inc;
-      if (m_angle > juce::MathConstants<double>::twoPi) {
-        m_angle -= juce::MathConstants<double>::twoPi;
-      }
     }
   }
+}
+
+void SynthVoice::configure(double freq, double sample_rate, uint8_t velocity) {
+  m_angle = 0;
+  m_velocity = velocity;
+  m_inc = freq / sample_rate * juce::MathConstants<double>::twoPi;
+}
+
+double SynthVoice::sample() {
+  double value = 0.1 * std::sin(m_angle);
+  m_angle += m_inc;
+  if (m_angle > juce::MathConstants<double>::twoPi) {
+    m_angle -= juce::MathConstants<double>::twoPi;
+  }
+
+  return value;
+}
+
+bool SynthVoice::active() { return m_velocity > 0; }
+
+void SynthVoice::reset() {
+  m_angle = 0;
+  m_velocity = 0;
 }
