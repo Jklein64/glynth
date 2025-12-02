@@ -216,7 +216,11 @@ void HighPassFilter::configure(float freq, float res) {
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
 }
 
-Synth::Synth() {}
+Synth::Synth() {
+  m_voices.emplace_back();
+  m_voices.emplace_back();
+  m_voices.emplace_back();
+}
 
 void Synth::prepareToPlay(double sample_rate, int) {
   m_sample_rate = sample_rate;
@@ -234,28 +238,44 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       fmt::println("MIDI message at buffer sample {}: {}", i, description);
 
       if (msg.isNoteOn()) {
-        auto note_number = msg.getNoteNumber();
-        auto freq = juce::MidiMessage::getMidiNoteInHertz(note_number);
-        m_voice.configure(freq, m_sample_rate);
+        auto note = msg.getNoteNumber();
+        // TODO least-recently used instead of last
+        for (size_t k = 0; k < m_voices.size(); k++) {
+          if (!m_voices[k].active || k == m_voices.size() - 1) {
+            m_voices[k].configure(note, m_sample_rate);
+            break;
+          }
+        }
       } else if (msg.isNoteOff()) {
-        m_voice.reset();
+        auto note = msg.getNoteNumber();
+        for (auto& voice : m_voices) {
+          if (voice.m_note == note) {
+            voice.reset();
+          }
+        }
       }
 
       it++;
     }
 
-    if (m_voice.active()) {
-      double value = m_voice.sample();
-      for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
-        buffer.setSample(ch, i, static_cast<float>(value));
+    double sample = 0;
+    for (auto& voice : m_voices) {
+      if (voice.active) {
+        sample += voice.sample();
       }
+    }
+
+    for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
+      buffer.setSample(ch, i, static_cast<float>(sample));
     }
   }
 }
 
-void SynthVoice::configure(double freq, double sample_rate, uint8_t velocity) {
+void SynthVoice::configure(int note, double sample_rate) {
+  active = true;
   m_angle = 0;
-  m_velocity = velocity;
+  m_note = note;
+  auto freq = juce::MidiMessage::getMidiNoteInHertz(note);
   m_inc = freq / sample_rate * juce::MathConstants<double>::twoPi;
 }
 
@@ -269,9 +289,7 @@ double SynthVoice::sample() {
   return value;
 }
 
-bool SynthVoice::active() { return m_velocity > 0; }
-
 void SynthVoice::reset() {
+  active = false;
   m_angle = 0;
-  m_velocity = 0;
 }

@@ -147,15 +147,15 @@ private:
 };
 
 struct SynthVoice {
-  void configure(double freq, double sample_rate, uint8_t velocity = 127);
+  void configure(int note, double sample_rate);
   double sample();
-  bool active();
   void reset();
+  int m_note;
+  bool active;
 
 private:
   double m_angle;
   double m_inc;
-  uint8_t m_velocity = 0;
 };
 class Synth : public SubProcessor {
 public:
@@ -165,7 +165,7 @@ public:
                     juce::MidiBuffer& midi_messages) override;
 
 private:
-  SynthVoice m_voice;
+  std::vector<SynthVoice> m_voices;
   double m_sample_rate;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
