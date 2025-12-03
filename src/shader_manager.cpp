@@ -211,9 +211,6 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
         fmt::println(R"(Marked "{}" as dirty)", filename);
       }
     }
-    // if (m_name_to_id.contains(name)) {
-    //   markDirty(name);
-    // }
   }
 
   else if (action == efsw::Actions::Moved) {
