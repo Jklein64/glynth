@@ -97,10 +97,30 @@ private:
 class TextComponent : public ShaderComponent {
 public:
   TextComponent(ShaderManager& shader_manager, const std::string& program_id);
+  ~TextComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
+
+  struct Character {
+    Character() = default;
+    Character(FT_ULong code, FT_Face face);
+    glm::vec2 size;
+    glm::vec2 bearing;
+    float advance;
+    GLuint texture;
+  };
 
 private:
   FT_Library m_ft_library;
   std::string m_text;
+  // TODO extend to support medium and bold
+  FT_Face m_face;
+  // m_characters[i] is the ASCII character with code i
+  std::array<Character, 128> m_characters;
+  GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
+
+  struct RectVertex {
+    glm::vec2 pos;
+    glm::vec2 uv;
+  };
 };

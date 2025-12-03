@@ -1,9 +1,11 @@
 #include "editor.h"
+#include "fonts.h"
 #include "processor.h"
 
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <glm/ext.hpp>
 
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
     : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context) {
@@ -24,7 +26,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
-  m_shader_manager.addProgram("char", "rect", "char");
+  m_shader_manager.addProgram("char", "char", "char");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
   auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
@@ -203,11 +205,111 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
   if (FT_Init_FreeType(&m_ft_library)) {
     fmt::println(stderr, "Failed to init FreeType");
   };
+
+  // TODO move this to static/singleton initialization
+  if (FT_New_Memory_Face(
+          m_ft_library,
+          reinterpret_cast<const FT_Byte*>(fonts::SplineSansMonoBold_ttf),
+          fonts::SplineSansMonoBold_ttfSize, 0, &m_face)) {
+    fmt::println(stderr, "Failed to load font face");
+  }
+
+  // Read 20px tall ASCII characters from font face
+  FT_Set_Pixel_Sizes(m_face, 0, 20);
+  for (size_t i = 0; i < m_characters.size(); i++) {
+    Character& c = m_characters[i];
+    c = Character(static_cast<FT_ULong>(i), m_face);
+    fmt::println("loaded character '{}'", static_cast<char>(i));
+    fmt::println(" - size: {}, {}", c.size.x, c.size.y);
+    fmt::println(" - bearing: {}, {}", c.bearing.x, c.bearing.y);
+    fmt::println(" - advance: {}", c.advance);
+  }
+
+  FT_Done_Face(m_face);
+
+  // Initialize buffers
+  using namespace juce::gl;
+  glGenVertexArrays(1, &m_vao);
+  glGenBuffers(1, &m_vbo);
+  glGenBuffers(1, &m_ebo);
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+  // Reserve enough buffer space for an indexed quad
+  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(RectVertex), nullptr,
+               GL_DYNAMIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), nullptr,
+               GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex), nullptr);
+  glVertexAttribPointer(
+      1, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex),
+      reinterpret_cast<const void*>(offsetof(RectVertex, uv)));
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  // Unbind buffers
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+  // Add projection matrix as uniform
+  m_shader_manager.useProgram(m_program_id);
+  glm::mat4 projection = glm::ortho(0.0f, 840.0f, 0.0f, 473.0f);
+  m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
-void TextComponent::renderOpenGL() {}
+TextComponent::~TextComponent() {
+  using namespace juce::gl;
+  glDeleteBuffers(1, &m_vbo);
+  glDeleteVertexArrays(1, &m_vao);
+}
+
+void TextComponent::renderOpenGL() {
+  using namespace juce::gl;
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  m_shader_manager.useProgram(m_program_id);
+  // Convert to the portion of the canonical view volume this takes up
+  auto bounds = getBounds();
+  auto parent_height = static_cast<float>(getParentHeight());
+  // x, y is bottom left corner of the text component
+  float w = static_cast<float>(bounds.getWidth());
+  float h = static_cast<float>(bounds.getHeight());
+  float x = static_cast<float>(bounds.getX());
+  float y = parent_height - static_cast<float>(bounds.getY()) - h;
+  std::array<RectVertex, 4> vertices = {
+      RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
+      RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)},
+  };
+  std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(indices), indices.data());
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+  // Unbind buffers
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
 
 void TextComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::white);
   g.drawRect(getLocalBounds());
+}
+
+TextComponent::Character::Character(FT_ULong code, FT_Face face) {
+  if (FT_Load_Char(face, code, FT_LOAD_RENDER)) {
+    fmt::println(stderr, "Failed to load character");
+  }
+  // Read from glyph slot
+  FT_GlyphSlot glyph = face->glyph;
+  size = glm::vec2(glyph->bitmap.width, glyph->bitmap.rows);
+  bearing = glm::vec2(glyph->bitmap_left, glyph->bitmap_top);
+  advance = static_cast<float>(glyph->advance.x) / 64;
+  // TODO Create texture from bitmap
+  // using namespace juce::gl;
+  // glGenTextures(1, &texture);
+  // glBindTexture(GL_TEXTURE_2D, texture);
+  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+  //              static_cast<GLsizei>(glyph->bitmap.width),
+  //              static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
+  //              GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
 }
