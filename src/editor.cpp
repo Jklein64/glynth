@@ -238,7 +238,8 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
   // Reserve enough buffer space for an indexed quad
   glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(RectVertex), nullptr,
                GL_DYNAMIC_DRAW);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), nullptr,
+  std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(),
                GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex), nullptr);
   glVertexAttribPointer(
@@ -266,24 +267,28 @@ void TextComponent::renderOpenGL() {
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
-  // Convert to the portion of the canonical view volume this takes up
   auto bounds = getBounds();
   auto parent_height = static_cast<float>(getParentHeight());
-  // x, y is bottom left corner of the text component
-  float w = static_cast<float>(bounds.getWidth());
-  float h = static_cast<float>(bounds.getHeight());
-  float x = static_cast<float>(bounds.getX());
-  float y = parent_height - static_cast<float>(bounds.getY()) - h;
-  std::array<RectVertex, 4> vertices = {
-      RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
-      RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
-      RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
-      RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)},
-  };
-  std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(indices), indices.data());
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+  float height = static_cast<float>(bounds.getHeight());
+  // origin is where to start drawing text
+  glm::vec2 origin(static_cast<float>(bounds.getX()),
+                   parent_height - static_cast<float>(bounds.getY()) - height);
+  for (char c_raw : m_text) {
+    Character c = m_characters[static_cast<size_t>(c_raw)];
+    float x = origin.x + c.bearing.x;
+    float y = origin.y - (c.size.y - c.bearing.y);
+    float w = c.size.x;
+    float h = c.size.y;
+    std::array<RectVertex, 4> vertices = {
+        RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
+        RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
+        RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
+        RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)},
+    };
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    origin.x += c.advance;
+  }
 
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
