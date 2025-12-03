@@ -119,6 +119,7 @@ target_link_libraries_system(
         fmt::fmt
         glm::glm
         efsw-static
+        freetype
 )
 
 add_executable(read src/read.cpp src/outliner.cpp)

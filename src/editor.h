@@ -5,6 +5,7 @@
 
 #include <efsw/efsw.hpp>
 #include <fmt/base.h>
+#include <freetype/freetype.h>
 #include <glm/glm.hpp>
 #include <juce_events/juce_events.h>
 #include <juce_opengl/juce_opengl.h>
@@ -91,4 +92,15 @@ private:
   std::optional<float> m_down_y = std::nullopt;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(KnobComponent)
+};
+
+class TextComponent : public ShaderComponent {
+public:
+  TextComponent(ShaderManager& shader_manager, const std::string& program_id);
+  void renderOpenGL() override;
+  void paint(juce::Graphics& g) override;
+
+private:
+  FT_Library m_ft_library;
+  std::string m_text;
 };

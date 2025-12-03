@@ -24,9 +24,11 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
+  m_shader_manager.addProgram("char", "rect", "char");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
   auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
+  auto text = std::make_unique<TextComponent>(m_shader_manager, "char");
   // This callback is not run on the main (message) thread; JUCE requires lock
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -35,10 +37,13 @@ void GlynthEditor::newOpenGLContextCreated() {
   rect->setBounds(100, 100, 100, 100);
   addAndMakeVisible(knob.get());
   knob->setBounds(200, 200, 100, 100);
+  addAndMakeVisible(text.get());
+  text->setBounds(400, 200, 100, 50);
   m_message_lock.exit();
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
+  m_shader_components.push_back(std::move(text));
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -189,4 +194,20 @@ void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
 void KnobComponent::mouseUp(const juce::MouseEvent&) {
   m_down_y = std::nullopt;
   m_down_value = std::nullopt;
+}
+
+TextComponent::TextComponent(ShaderManager& shader_manager,
+                             const std::string& program_id)
+    : ShaderComponent(shader_manager, program_id) {
+  m_text = "Glynth";
+  if (FT_Init_FreeType(&m_ft_library)) {
+    fmt::println(stderr, "Failed to init FreeType");
+  };
+}
+
+void TextComponent::renderOpenGL() {}
+
+void TextComponent::paint(juce::Graphics& g) {
+  g.setColour(juce::Colours::white);
+  g.drawRect(getLocalBounds());
 }
