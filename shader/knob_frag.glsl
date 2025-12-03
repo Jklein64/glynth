@@ -6,8 +6,11 @@
 const float WEDGE_WIDTH = 0.5;
 const float RING_IN = 10; // for diameter 20px
 const float RING_OUT = 20; // for diameter 40px
+const vec3 ACCENT = vec3(0.9607843137, 0.7529411765, 0.137254902);
+const vec3 ACCENT_FADED = vec3(0.435, 0.353, 0.149);
 
 uniform vec2 u_resolution;
+uniform float u_value;
 
 in vec2 texcoord;
 out vec4 frag_color;
@@ -48,16 +51,24 @@ float sd_pie(vec2 p, vec2 c, float t0, float t1, float r) {
     return max(l, m * sign(cs.y * p.x - cs.x * p.y));
 }
 
+float sd_colorbar(vec2 p, vec2 c, float t0, float t1) {
+    // remap from [0, 1] to colorbar range
+    t0 = map(t0, 0, 1, -M_PI + WEDGE_WIDTH, M_PI - WEDGE_WIDTH);
+    t1 = map(t1, 0, 1, -M_PI + WEDGE_WIDTH, M_PI - WEDGE_WIDTH);
+    // colorbar is intersection here for some reason...
+    float d1 = sd_circle_ring(p, c, RING_IN, RING_OUT);
+    float d2 = sd_pie(p, c, t0, t1, RING_OUT);
+    return max(d1, d2);
+}
+
 void main() {
     vec2 p = texcoord * u_resolution;
     vec2 c = vec2(0.5, 0.5) * u_resolution;
-    // Nice smoothed circle
     frag_color = vec4(0, 0, 0, 1);
-    // indicator functions for ring and pie, multiply to intersect
-    float in_ring = 1 - smoothstep(0, 1, sd_circle_ring(p, c, RING_IN, RING_OUT));
-    // remap from [0, 1] to [-pi, pi]
-    float t0 = map(0, 0, 1, -M_PI + WEDGE_WIDTH, M_PI - WEDGE_WIDTH);
-    float t1 = map(1, 0, 1, -M_PI + WEDGE_WIDTH, M_PI - WEDGE_WIDTH);
-    float in_pie = 1 - smoothstep(0, 1, sd_pie(p, c, t0, t1, RING_OUT));
-    frag_color.xyz += in_ring * in_pie * vec3(0.82, 0.38, 0.38);
+    float t = u_value;
+    // the smoothsteps add a bright line at the boundary
+    float in_bar_light = 1 - smoothstep(0, 1, sd_colorbar(p, c, 0, t));
+    float in_bar_dark = 1 - smoothstep(0, 1, sd_colorbar(p, c, t, 1));
+    frag_color.xyz += in_bar_light * ACCENT;
+    frag_color.xyz += in_bar_dark * ACCENT_FADED;
 }
