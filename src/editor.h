@@ -75,3 +75,18 @@ private:
   GLuint m_vbo = 0, m_vao = 0, m_ebo = 0;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RectComponent)
 };
+
+class KnobComponent : public RectComponent {
+public:
+  KnobComponent(ShaderManager& shader_manager, const std::string& program_id);
+  void renderOpenGL() override;
+  void mouseDrag(const juce::MouseEvent& e) override;
+
+private:
+  float m_value = 0.0;
+  // For syncing across UI/OpenGL threads
+  bool m_dirty = false;
+  std::mutex m_mutex;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(KnobComponent)
+};

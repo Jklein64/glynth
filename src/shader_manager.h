@@ -18,6 +18,7 @@ public:
   bool addProgram(const ProgramId& id, const ShaderName& vert_name,
                   const ShaderName& frag_name);
   bool useProgram(const ProgramId& id);
+  bool setUniform(const ProgramId& id, const std::string& name, float value);
   bool setUniform(const ProgramId& id, const std::string& name,
                   glm::vec2 value);
   void markDirty(const ProgramId& id);

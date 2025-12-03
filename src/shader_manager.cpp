@@ -85,6 +85,29 @@ bool ShaderManager::useProgram(const ProgramId& id) {
   }
 }
 
+// TODO find a better way to not duplicate so much code
+bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
+                               float value) {
+  assert(m_context.isAttached() && m_context.isActive());
+  if (auto it = m_programs.find(id); it != m_programs.end()) {
+    it->second->setUniform(name.c_str(), value);
+#ifdef GLYNTH_HSR
+    // Add callback to refresh the uniforms when the shader gets reloaded
+    m_uniform_refreshers[id].push_back([this, id, name, value] {
+      if (auto it2 = m_programs.find(id); it2 != m_programs.end()) {
+        it2->second->setUniform(name.c_str(), value);
+      } else {
+        fmt::println(stderr, R"(No program found with id "{}")", id);
+      }
+    });
+#endif
+    return true;
+  } else {
+    fmt::println(stderr, R"(No program found with id "{}")", id);
+    return false;
+  }
+}
+
 bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
                                glm::vec2 value) {
   assert(m_context.isAttached() && m_context.isActive());

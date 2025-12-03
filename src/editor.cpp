@@ -26,7 +26,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("knob", "rect_vert", "knob_frag");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
-  auto knob = std::make_unique<RectComponent>(m_shader_manager, "knob");
+  auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
   // This callback is not run on the main (message) thread; JUCE requires lock
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -160,4 +160,28 @@ void RectComponent::resized() {
   auto resolution = glm::vec2(width, height);
   fmt::println("setting u_resolution = ({}, {})", resolution.x, resolution.y);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
+}
+
+KnobComponent::KnobComponent(ShaderManager& shader_manager,
+                             const std::string& program_id)
+    : RectComponent(shader_manager, program_id) {}
+
+void KnobComponent::renderOpenGL() {
+  RectComponent::renderOpenGL();
+  std::lock_guard<std::mutex> lk(m_mutex);
+  if (m_dirty) {
+    // Uniforms can only be updated from the OpenGL thread
+    m_shader_manager.useProgram(m_program_id);
+    m_shader_manager.setUniform(m_program_id, "u_value", m_value);
+    m_dirty = false;
+  }
+}
+
+void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
+  if (e.mouseWasDraggedSinceMouseDown()) {
+    float delta = static_cast<float>(-e.getDistanceFromDragStartY()) / 5000;
+    m_value = std::clamp<float>(m_value + delta, 0, 1);
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_dirty = true;
+  }
 }
