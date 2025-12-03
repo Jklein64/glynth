@@ -44,13 +44,6 @@ FetchContent_MakeAvailable(
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Gperftools COMPONENTS PROFILER)
 
-add_executable(read src/read.cpp src/outliner.cpp)
-target_compile_features(read PRIVATE cxx_std_20)
-target_link_libraries(
-    read
-    PRIVATE freetype fmt::fmt glm::glm npy::npy ${Gperftools_LIBRARIES}
-)
-
 juce_add_plugin(
     glynth
     COMPANY_NAME "Jason Klein"
@@ -78,6 +71,14 @@ juce_add_binary_data(
     SOURCES
     ${SHADER_FILES}
 )
+file(GLOB FONT_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/font/*.ttf)
+juce_add_binary_data(
+    fonts
+    HEADER_NAME "fonts.h"
+    NAMESPACE fonts
+    SOURCES
+    ${FONT_FILES}
+)
 
 target_sources(
     glynth
@@ -102,7 +103,7 @@ target_compile_definitions(
 
 target_link_libraries(
     glynth
-    PRIVATE shaders
+    PRIVATE shaders fonts
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -118,4 +119,11 @@ target_link_libraries_system(
         fmt::fmt
         glm::glm
         efsw-static
+)
+
+add_executable(read src/read.cpp src/outliner.cpp)
+target_compile_features(read PRIVATE cxx_std_20)
+target_link_libraries(
+    read
+    PRIVATE freetype fonts fmt::fmt glm::glm npy::npy ${Gperftools_LIBRARIES}
 )

@@ -24,6 +24,15 @@
             "internalConsoleOptions": "openOnSessionStart",
             "program": "${workspaceFolder}/build/_deps/juce-build/extras/AudioPluginHost/AudioPluginHost_artefacts/Debug/AudioPluginHost.app/Contents/MacOS/AudioPluginHost",
             "preLaunchTask": "build (AU)"
+        },
+        {
+            "name": "read",
+            "type": "lldb",
+            "request": "launch",
+            "console": "internalConsole",
+            "internalConsoleOptions": "openOnSessionStart",
+            "program": "${workspaceFolder}/build/read",
+            "preLaunchTask": "build (read)",
         }
     ]
 }

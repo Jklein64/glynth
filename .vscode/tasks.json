@@ -18,6 +18,15 @@
 			"targets": [
 				"glynth_Standalone"
 			],
+		},
+		{
+			"label": "build (read)",
+			"type": "cmake",
+			"group": "build",
+			"command": "build",
+			"targets": [
+				"read"
+			]
 		}
 	]
 }
