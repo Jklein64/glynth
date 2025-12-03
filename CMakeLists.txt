@@ -68,7 +68,8 @@ juce_add_plugin(
 file(
     GLOB SHADER_FILES
     CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.glsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.vert
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader/*.frag
 )
 juce_add_binary_data(
     shaders

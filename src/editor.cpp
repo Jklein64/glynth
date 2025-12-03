@@ -21,9 +21,9 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_shader_manager.addProgram("bg", "ortho_vert", "vt220");
-  m_shader_manager.addProgram("rect", "rect_vert", "rect_frag");
-  m_shader_manager.addProgram("knob", "rect_vert", "knob_frag");
+  m_shader_manager.addProgram("bg", "ortho", "vt220");
+  m_shader_manager.addProgram("rect", "rect", "rect");
+  m_shader_manager.addProgram("knob", "rect", "knob");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
   auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");

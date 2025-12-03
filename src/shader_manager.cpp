@@ -13,8 +13,8 @@
 ShaderManager::ProgramMetadata::ProgramMetadata(const std::string& vname,
                                                 const std::string& fname)
     : vert_name(vname), frag_name(fname) {
-  vert_res_name = fmt::format("{}_glsl", vert_name);
-  frag_res_name = fmt::format("{}_glsl", frag_name);
+  vert_res_name = fmt::format("{}_vert", vert_name);
+  frag_res_name = fmt::format("{}_frag", frag_name);
   const char* tmp;
   tmp = shaders::getNamedResourceOriginalFilename(vert_res_name.c_str());
   assert(tmp != nullptr);
@@ -37,8 +37,8 @@ bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
   assert(m_context.isAttached() && m_context.isActive());
   assert(!m_programs.contains(id));
   int size; // JUCE's `dataSizeInBytes` field doesn't accept nullptr
-  std::string vert_res_name = fmt::format("{}_glsl", vert_name);
-  std::string frag_res_name = fmt::format("{}_glsl", frag_name);
+  std::string vert_res_name = fmt::format("{}_vert", vert_name);
+  std::string frag_res_name = fmt::format("{}_frag", frag_name);
   auto vert_source =
       m_vert_sources.contains(vert_name)
           ? m_vert_sources.at(vert_name).c_str()

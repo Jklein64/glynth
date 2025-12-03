@@ -67,8 +67,8 @@ void main() {
     frag_color = vec4(0, 0, 0, 1);
     float t = u_value;
     // the smoothsteps add a bright line at the boundary
-    float in_bar_light = 1 - smoothstep(0, 1, sd_colorbar(p, c, 0, t));
-    float in_bar_dark = 1 - smoothstep(0, 1, sd_colorbar(p, c, t, 1));
+    float in_bar_light = 1 - smoothstep(0.0, 1.0, sd_colorbar(p, c, 0, t));
+    float in_bar_dark = 1 - smoothstep(0.0, 1.0, sd_colorbar(p, c, t, 1));
     frag_color.xyz += in_bar_light * ACCENT;
     frag_color.xyz += in_bar_dark * ACCENT_FADED;
 }
