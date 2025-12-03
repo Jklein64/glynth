@@ -157,11 +157,7 @@ void RectComponent::resized() {
   glBindVertexArray(0);
   // Must use shader before setting uniforms
   m_shader_manager.useProgram(m_program_id);
-  // Apply pixel scale so that units are physical pixels
-  auto& desktop = juce::Desktop::getInstance();
-  auto* display = desktop.getDisplays().getPrimaryDisplay();
-  double scale = display ? display->scale : 1.0;
-  auto resolution = glm::vec2(width * scale, height * scale);
+  auto resolution = glm::vec2(width, height);
   fmt::println("setting u_resolution = ({}, {})", resolution.x, resolution.y);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
 }
