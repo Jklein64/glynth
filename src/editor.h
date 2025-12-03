@@ -80,13 +80,15 @@ class KnobComponent : public RectComponent {
 public:
   KnobComponent(ShaderManager& shader_manager, const std::string& program_id);
   void renderOpenGL() override;
+  void mouseDown(const juce::MouseEvent& e) override;
   void mouseDrag(const juce::MouseEvent& e) override;
+  void mouseUp(const juce::MouseEvent& e) override;
 
 private:
-  float m_value = 0.0;
   // For syncing across UI/OpenGL threads
-  bool m_dirty = false;
-  std::mutex m_mutex;
+  std::atomic<float> m_value = 0.0;
+  std::optional<float> m_down_value = std::nullopt;
+  std::optional<float> m_down_y = std::nullopt;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(KnobComponent)
 };

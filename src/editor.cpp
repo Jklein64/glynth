@@ -168,20 +168,25 @@ KnobComponent::KnobComponent(ShaderManager& shader_manager,
 
 void KnobComponent::renderOpenGL() {
   RectComponent::renderOpenGL();
-  std::lock_guard<std::mutex> lk(m_mutex);
-  if (m_dirty) {
-    // Uniforms can only be updated from the OpenGL thread
-    m_shader_manager.useProgram(m_program_id);
-    m_shader_manager.setUniform(m_program_id, "u_value", m_value);
-    m_dirty = false;
-  }
+  // Uniforms can only be updated from the OpenGL thread
+  // useProgram() was already called by RectComponent::renderOpenGL()
+  m_shader_manager.setUniform(m_program_id, "u_value", m_value.load());
+}
+
+void KnobComponent::mouseDown(const juce::MouseEvent& e) {
+  m_down_y = e.position.y;
+  m_down_value = m_value.load();
 }
 
 void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
-  if (e.mouseWasDraggedSinceMouseDown()) {
-    float delta = static_cast<float>(-e.getDistanceFromDragStartY()) / 5000;
-    m_value = std::clamp<float>(m_value + delta, 0, 1);
-    std::lock_guard<std::mutex> lk(m_mutex);
-    m_dirty = true;
+  if (e.mouseWasDraggedSinceMouseDown() && m_down_value && m_down_y) {
+    // Flipped since JUCE inverts the y coordinate
+    float delta = (m_down_y.value() - e.position.y) / 100;
+    m_value = std::clamp(m_down_value.value() + delta, 0.0f, 1.0f);
   }
+}
+
+void KnobComponent::mouseUp(const juce::MouseEvent&) {
+  m_down_y = std::nullopt;
+  m_down_value = std::nullopt;
 }
