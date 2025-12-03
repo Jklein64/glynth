@@ -85,7 +85,6 @@ target_sources(
     PRIVATE src/editor.cpp src/processor.cpp src/shader_manager.cpp
 )
 target_compile_features(glynth PRIVATE cxx_std_20)
-# target_compile_options(glynth PRIVATE -wfloat-equal)
 option(GLYNTH_HOT_SHADER_RELOAD "Enable hot reloading of shaders" OFF)
 message("GLYNTH_HOT_SHADER_RELOAD = ${GLYNTH_HOT_SHADER_RELOAD}")
 # Generator expression for Hot Shader Reloading (HSR)
