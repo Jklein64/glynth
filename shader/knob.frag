@@ -65,10 +65,9 @@ void main() {
     vec2 p = texcoord * u_resolution;
     vec2 c = vec2(0.5, 0.5) * u_resolution;
     frag_color = vec4(0, 0, 0, 1);
-    float t = u_value;
-    // the smoothsteps add a bright line at the boundary
-    float in_bar_light = 1 - smoothstep(0.0, 1.0, sd_colorbar(p, c, 0, t));
-    float in_bar_dark = 1 - smoothstep(0.0, 1.0, sd_colorbar(p, c, t, 1));
+    // -0.5 to 0.5 causes perfect alignment with no overlap but still 1px smoothing
+    float in_bar_light = 1 - smoothstep(-0.5, 0.5, sd_colorbar(p, c, 0, u_value));
+    float in_bar_dark = 1 - smoothstep(-0.5, 0.5, sd_colorbar(p, c, u_value, 1));
     frag_color.xyz += in_bar_light * ACCENT;
     frag_color.xyz += in_bar_dark * ACCENT_FADED;
 }
