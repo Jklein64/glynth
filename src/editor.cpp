@@ -40,22 +40,20 @@ void GlynthEditor::newOpenGLContextCreated() {
   addAndMakeVisible(knob.get());
   knob->setBounds(200, 200, 100, 100);
   addAndMakeVisible(text.get());
-  text->setBounds(400, 200, 100, 50);
+  text->setBounds(325, 200, 100, 50);
   m_message_lock.exit();
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
   m_shader_components.push_back(std::move(text));
-  // Configure alpha blending
-  using namespace juce::gl;
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void GlynthEditor::renderOpenGL() {
   m_shader_manager.tryUpdateDirty();
 
   using namespace juce::gl;
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   juce::OpenGLHelpers::clear(juce::Colours::black);
   for (auto& component : m_shader_components) {
     component->renderOpenGL();
@@ -208,6 +206,13 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
     fmt::println(stderr, "Failed to init FreeType");
   };
 
+  // Get display scale, which is needed to render freetype fonts correctly
+  m_message_lock.enter();
+  auto& desktop = juce::Desktop::getInstance();
+  auto* display = desktop.getDisplays().getPrimaryDisplay();
+  m_display_scale = static_cast<float>(display->scale);
+  m_message_lock.exit();
+
   // TODO move this to static/singleton initialization
   if (FT_New_Memory_Face(
           m_ft_library,
@@ -217,7 +222,8 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
   }
 
   // Read 20px tall ASCII characters from font face
-  FT_Set_Pixel_Sizes(m_face, 0, 20);
+  FT_UInt pixel_height = static_cast<FT_UInt>(20 * m_display_scale);
+  FT_Set_Pixel_Sizes(m_face, 0, pixel_height);
   for (size_t i = 0; i < m_characters.size(); i++) {
     Character& c = m_characters[i];
     c = Character(static_cast<FT_ULong>(i), m_face);
@@ -275,10 +281,10 @@ void TextComponent::renderOpenGL() {
                    parent_height - static_cast<float>(bounds.getY()) - height);
   for (char c_raw : m_text) {
     Character c = m_characters[static_cast<size_t>(c_raw)];
-    float x = origin.x + c.bearing.x;
-    float y = origin.y - (c.size.y - c.bearing.y);
-    float w = c.size.x;
-    float h = c.size.y;
+    float x = (origin.x + c.bearing.x / m_display_scale);
+    float y = origin.y - (c.size.y - c.bearing.y) / m_display_scale;
+    float w = c.size.x / m_display_scale;
+    float h = c.size.y / m_display_scale;
     std::array<RectVertex, 4> vertices = {
         RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
         RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
@@ -288,7 +294,7 @@ void TextComponent::renderOpenGL() {
     glBindTexture(GL_TEXTURE_2D, c.texture);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    origin.x += c.advance;
+    origin.x += c.advance / m_display_scale;
   }
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
