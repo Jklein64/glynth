@@ -1,4 +1,5 @@
 #include "shader_manager.h"
+#include "logger.h"
 #include "shaders.h"
 
 #include <cassert>
@@ -25,8 +26,8 @@ ShaderManager::ProgramMetadata::ProgramMetadata(const std::string& vname,
   frag_filename = tmp;
 }
 
-ShaderManager::ShaderManager(juce::OpenGLContext& context, FILE* log_file)
-    : m_context(context), m_log_file(log_file) {
+ShaderManager::ShaderManager(juce::OpenGLContext& context)
+    : m_context(context) {
 #ifdef GLYNTH_HSR
   m_file_watcher.addWatch(s_shader_dir, this);
   m_file_watcher.watch();
@@ -49,13 +50,13 @@ bool ShaderManager::addProgram(const ProgramId& id, const ShaderName& vert_name,
           ? m_frag_sources.at(frag_name).c_str()
           : shaders::getNamedResource(frag_res_name.c_str(), size);
   if (vert_source == nullptr) {
-    fmt::println(m_log_file,
+    fmt::println(Logger::file,
                  R"(Error loading shader with name "{}" (resource name "{}"))",
                  vert_name, vert_res_name);
     return false;
   }
   if (frag_source == nullptr) {
-    fmt::println(m_log_file,
+    fmt::println(Logger::file,
                  R"(Error loading shader with name "{}" (resource name "{}"))",
                  frag_name, frag_res_name);
     return false;
@@ -81,7 +82,7 @@ bool ShaderManager::useProgram(const ProgramId& id) {
     it->second->use();
     return true;
   } else {
-    fmt::println(m_log_file, R"(No program found with id "{}")", id);
+    fmt::println(Logger::file, R"(No program found with id "{}")", id);
     return false;
   }
 }
@@ -107,7 +108,7 @@ bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
           value);
       return true;
     } else {
-      fmt::println(m_log_file, R"(No program found with id "{}")", id);
+      fmt::println(Logger::file, R"(No program found with id "{}")", id);
       return false;
     }
   };
@@ -147,7 +148,7 @@ void ShaderManager::tryUpdateDirty() {
         m_programs.insert_or_assign(id, std::move(program));
         m_vert_sources.insert_or_assign(id, std::move(vert_source));
         m_frag_sources.insert_or_assign(id, std::move(frag_source));
-        fmt::println(m_log_file, R"(Updated shader program "{}")", id);
+        fmt::println(Logger::file, R"(Updated shader program "{}")", id);
       }
     }
     m_dirty.clear();
@@ -161,17 +162,17 @@ ShaderManager::createProgram(const ProgramMetadata& metadata,
   assert(m_context.isAttached() && m_context.isActive());
   auto program = std::make_unique<juce::OpenGLShaderProgram>(m_context);
   if (!program->addVertexShader(vert_source)) {
-    fmt::println(m_log_file, "Error compiling vertex shader {}: {}",
+    fmt::println(Logger::file, "Error compiling vertex shader {}: {}",
                  metadata.vert_filename, program->getLastError().toStdString());
     return nullptr;
   }
   if (!program->addFragmentShader(frag_source)) {
-    fmt::println(m_log_file, "Error compiling fragment shader {}: {}",
+    fmt::println(Logger::file, "Error compiling fragment shader {}: {}",
                  metadata.frag_filename, program->getLastError().toStdString());
     return nullptr;
   }
   if (!program->link()) {
-    fmt::println(m_log_file, "Error linking shaders: {}",
+    fmt::println(Logger::file, "Error linking shaders: {}",
                  program->getLastError().toStdString());
     return nullptr;
   }
@@ -197,7 +198,7 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
     for (const auto& [id, metadata] : m_metadata) {
       if (name == metadata.frag_name || name == metadata.vert_name) {
         markDirty(id);
-        fmt::println(m_log_file, R"(Marked "{}" as dirty)", filename);
+        fmt::println(Logger::file, R"(Marked "{}" as dirty)", filename);
       }
     }
   }
@@ -205,14 +206,14 @@ void ShaderManager::handleFileAction(efsw::WatchID, const std::string&,
   else if (action == efsw::Actions::Moved) {
     std::string name = std::filesystem::path(old_filename).stem();
     fmt::println(
-        m_log_file,
+        Logger::file,
         R"(Warning: rename "{}" -> "{}" might invalidate hot reloading)",
         old_filename, filename);
   }
 
   else if (action == efsw::Actions::Delete) {
     std::string name = std::filesystem::path(filename).stem();
-    fmt::println(m_log_file,
+    fmt::println(Logger::file,
                  R"(Warning: deletion of "{}" might invalidate hot reloading)",
                  filename);
   }

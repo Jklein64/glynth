@@ -1,28 +1,7 @@
 #pragma once
 
-#include <filesystem>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <random>
-#include <span>
-
-class State {
-public:
-  std::vector<std::byte> pack();
-  void unpack(std::span<const std::byte> bytes);
-
-  juce::AudioParameterFloat* hpf_freq;
-  juce::AudioParameterFloat* hpf_res;
-  juce::AudioParameterFloat* lpf_freq;
-  juce::AudioParameterFloat* lpf_res;
-
-private:
-  struct Raw {
-    float hpf_freq;
-    float hpf_res;
-    float lpf_freq;
-    float lpf_res;
-  };
-};
 
 class GlynthProcessor;
 class SubProcessor {
@@ -39,7 +18,6 @@ public:
 
 protected:
   GlynthProcessor& m_processor_ref;
-  FILE* m_log_file;
 };
 
 //==============================================================================
@@ -81,7 +59,6 @@ public:
   void getStateInformation(juce::MemoryBlock& dest_data) override;
   void setStateInformation(const void* data, int size) override;
 
-  FILE* const getLogFile();
   void timerCallback() override;
 
 private:
@@ -89,13 +66,11 @@ private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
 
-#ifdef GLYNTH_LOG_DIR
-  inline static auto s_log_dir = std::filesystem::path(GLYNTH_LOG_DIR);
-#endif
-
-  State m_state;
+  juce::AudioParameterFloat* m_hpf_freq;
+  juce::AudioParameterFloat* m_hpf_res;
+  juce::AudioParameterFloat* m_lpf_freq;
+  juce::AudioParameterFloat* m_lpf_res;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
-  FILE* m_log_file;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };

@@ -24,13 +24,12 @@ public:
   void openGLContextClosing() override;
 
 private:
-  GlynthProcessor& processor_ref;
+  GlynthProcessor& m_processor_ref;
   juce::MessageManager::Lock m_message_lock;
   juce::OpenGLContext m_context;
   ShaderManager m_shader_manager;
   FontManager m_font_manager;
   std::vector<std::unique_ptr<ShaderComponent>> m_shader_components;
-  FILE* m_log_file;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthEditor)
 };

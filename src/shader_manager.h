@@ -15,7 +15,7 @@ public:
   using ShaderName = std::string;
   using Uniform = std::variant<float, glm::vec2, glm::mat4>;
 
-  ShaderManager(juce::OpenGLContext& context, FILE* log_file);
+  ShaderManager(juce::OpenGLContext& context);
   bool addProgram(const ProgramId& id, const ShaderName& vert_name,
                   const ShaderName& frag_name);
   bool useProgram(const ProgramId& id);
@@ -55,7 +55,6 @@ private:
   std::unordered_map<ProgramId, ProgramMetadata> m_metadata;
   std::unordered_map<ProgramId, std::vector<std::function<bool()>>>
       m_uniform_refreshers;
-  FILE* m_log_file;
 
 #ifdef GLYNTH_HSR
   // For file watch synchronization
