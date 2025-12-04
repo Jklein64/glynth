@@ -32,6 +32,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_message_lock.exit();
 
   m_font_manager.addFace("SplineSansMono-Bold", 20);
+  m_font_manager.addFace("SplineSansMono-Medium", 10);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
@@ -215,9 +216,9 @@ void KnobComponent::mouseUp(const juce::MouseEvent&) {
 }
 
 TextComponent::TextComponent(GlynthEditor& editor_ref,
-                             const std::string& program_id)
-    : ShaderComponent(editor_ref, program_id) {
-  m_text = "20000.2Hz";
+                             const std::string& program_id,
+                             std::string_view text)
+    : ShaderComponent(editor_ref, program_id), m_text(text) {
   // Initialize buffers
   using namespace juce::gl;
   glGenVertexArrays(1, &m_vao);
@@ -266,7 +267,7 @@ void TextComponent::renderOpenGL() {
   float origin_x = static_cast<float>(bounds.getX() + parent_x);
   float origin_y = w_h - static_cast<float>(bounds.getY() + parent_y) - height;
   for (char c_raw : m_text) {
-    auto& c = m_font_manager.getCharacter("SplineSansMono-Bold", c_raw, 20);
+    auto& c = m_font_manager.getCharacter(m_face_name, c_raw, m_pixel_height);
     float x = origin_x + c.bearing.x;
     float y = origin_y - (c.size.y - c.bearing.y);
     float w = c.size.x;
@@ -301,10 +302,16 @@ void TextComponent::resized() {
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
+void TextComponent::setFontFace(std::string_view face_name,
+                                FT_UInt pixel_height) {
+  m_face_name = std::string(face_name);
+  m_pixel_height = pixel_height;
+}
+
 NumberComponent::NumberComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id,
                                  juce::AudioParameterFloat* param)
-    : TextComponent(editor_ref, program_id), m_param(param) {}
+    : TextComponent(editor_ref, program_id, "0"), m_param(param) {}
 
 void NumberComponent::renderOpenGL() {
   m_text = fmt::format("{: >7.1f}Hz", m_param->get());
@@ -315,18 +322,24 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        juce::AudioParameterFloat* param)
     : ShaderComponent(editor_ref, program_id),
-      m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param) {
+      m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param),
+      m_label(editor_ref, "char", "Cutoff Freq. (LPF)") {
+  m_number.setFontFace("SplineSansMono-Bold", 20);
+  m_label.setFontFace("SplineSansMono-Medium", 10);
   m_message_lock.enter();
   addAndMakeVisible(m_knob);
   m_knob.setBounds(8, 8, 40, 40);
   addAndMakeVisible(m_number);
   m_number.setBounds(56, 24, 112, 24);
+  addAndMakeVisible(m_label);
+  m_label.setBounds(56, 6, 108, 12);
   m_message_lock.exit();
 }
 
 void ParameterComponent::renderOpenGL() {
   m_knob.renderOpenGL();
   m_number.renderOpenGL();
+  m_label.renderOpenGL();
 }
 
 void ParameterComponent::paint(juce::Graphics& g) {
@@ -337,4 +350,5 @@ void ParameterComponent::paint(juce::Graphics& g) {
 void ParameterComponent::resized() {
   m_knob.resized();
   m_number.resized();
+  m_label.resized();
 }

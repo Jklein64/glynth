@@ -101,14 +101,18 @@ private:
 
 class TextComponent : public ShaderComponent {
 public:
-  TextComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  TextComponent(GlynthEditor& editor_ref, const std::string& program_id,
+                std::string_view text);
   ~TextComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
+  void setFontFace(std::string_view face_name, FT_UInt pixel_height);
 
 protected:
   std::string m_text;
+  std::string m_face_name;
+  FT_UInt m_pixel_height;
 
 private:
   GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
@@ -141,6 +145,7 @@ public:
 private:
   NumberComponent m_number;
   KnobComponent m_knob;
+  TextComponent m_label;
   juce::MessageManager::Lock m_message_lock;
   glm::vec2 m_offset;
 
