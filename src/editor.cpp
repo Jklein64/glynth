@@ -36,13 +36,12 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
   m_shader_manager.addProgram("char", "rect", "char");
-  auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
-  auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
+  auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
+  auto rect = std::make_unique<RectComponent>(*this, "rect");
   auto knob = std::make_unique<KnobComponent>(
-      m_shader_manager, "knob", m_processor_ref.getLowCutoffParam());
+      *this, "knob", m_processor_ref.getLowCutoffParam());
   auto number = std::make_unique<NumberComponent>(
-      m_font_manager, m_shader_manager, "char",
-      m_processor_ref.getLowCutoffParam());
+      *this, "char", m_processor_ref.getLowCutoffParam());
 
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -75,13 +74,14 @@ void GlynthEditor::renderOpenGL() {
 
 void GlynthEditor::openGLContextClosing() {}
 
-ShaderComponent::ShaderComponent(ShaderManager& shader_manager,
+ShaderComponent::ShaderComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id)
-    : m_shader_manager(shader_manager), m_program_id(program_id) {}
+    : m_editor_ref(editor_ref), m_shader_manager(editor_ref.m_shader_manager),
+      m_font_manager(editor_ref.m_font_manager), m_program_id(program_id) {}
 
-BackgroundComponent::BackgroundComponent(ShaderManager& shader_manager,
+BackgroundComponent::BackgroundComponent(GlynthEditor& editor_ref,
                                          const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id) {
+    : ShaderComponent(editor_ref, program_id) {
   using namespace juce::gl;
   glGenBuffers(1, &m_vbo);
   glGenVertexArrays(1, &m_vao);
@@ -110,9 +110,9 @@ void BackgroundComponent::renderOpenGL() {
   glBindVertexArray(0);
 }
 
-RectComponent::RectComponent(ShaderManager& shader_manager,
+RectComponent::RectComponent(GlynthEditor& editor_ref,
                              const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id) {
+    : ShaderComponent(editor_ref, program_id) {
   using namespace juce::gl;
   glGenBuffers(1, &m_vbo);
   glGenBuffers(1, &m_ebo);
@@ -152,10 +152,10 @@ void RectComponent::resized() {
   auto bounds = getBounds();
   auto width = bounds.getWidth();
   auto height = bounds.getHeight();
-  auto parent_width = static_cast<float>(getParentWidth());
-  auto parent_height = static_cast<float>(getParentHeight());
+  float window_width = static_cast<float>(m_editor_ref.getWidth());
+  float window_height = static_cast<float>(m_editor_ref.getHeight());
   float x = static_cast<float>(bounds.getX());
-  float y = parent_height - static_cast<float>(bounds.getY() + height);
+  float y = window_height - static_cast<float>(bounds.getY() + height);
   float w = static_cast<float>(width);
   float h = static_cast<float>(height);
   std::array<RectVertex, 4> vertices = {
@@ -177,14 +177,14 @@ void RectComponent::resized() {
   auto resolution = glm::vec2(width, height);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
   // Add projection matrix as uniform by getting parent (editor) bounds
-  glm::mat4 projection = glm::ortho(0.0f, parent_width, 0.0f, parent_height);
+  glm::mat4 projection = glm::ortho(0.0f, window_width, 0.0f, window_height);
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
-KnobComponent::KnobComponent(ShaderManager& shader_manager,
+KnobComponent::KnobComponent(GlynthEditor& editor_ref,
                              const std::string& program_id,
                              juce::AudioParameterFloat* param)
-    : RectComponent(shader_manager, program_id), m_param(param) {
+    : RectComponent(editor_ref, program_id), m_param(param) {
   m_range = m_param->getNormalisableRange();
 }
 
@@ -215,11 +215,9 @@ void KnobComponent::mouseUp(const juce::MouseEvent&) {
   m_down_value = std::nullopt;
 }
 
-TextComponent::TextComponent(FontManager& font_manager,
-                             ShaderManager& shader_manager,
+TextComponent::TextComponent(GlynthEditor& editor_ref,
                              const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id),
-      m_font_manager(font_manager) {
+    : ShaderComponent(editor_ref, program_id) {
   m_text = "20000.2Hz";
   // Initialize buffers
   using namespace juce::gl;
@@ -294,18 +292,17 @@ void TextComponent::paint(juce::Graphics& g) {
 
 void TextComponent::resized() {
   // Add projection matrix as uniform by getting parent (editor) bounds
-  float w = static_cast<float>(getParentWidth());
-  float h = static_cast<float>(getParentHeight());
+  float w = static_cast<float>(m_editor_ref.getWidth());
+  float h = static_cast<float>(m_editor_ref.getHeight());
   m_shader_manager.useProgram(m_program_id);
   glm::mat4 projection = glm::ortho(0.0f, w, 0.0f, h);
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
-NumberComponent::NumberComponent(FontManager& font_manager,
-                                 ShaderManager& shader_manager,
+NumberComponent::NumberComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id,
                                  juce::AudioParameterFloat* param)
-    : TextComponent(font_manager, shader_manager, program_id), m_param(param) {}
+    : TextComponent(editor_ref, program_id), m_param(param) {}
 
 void NumberComponent::renderOpenGL() {
   m_text = fmt::format("{: >7.1f}Hz", m_param->get());
