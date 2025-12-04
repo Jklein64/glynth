@@ -148,10 +148,13 @@ void RectComponent::resized() {
   auto bounds = getBounds();
   auto width = bounds.getWidth();
   auto height = bounds.getHeight();
-  float window_width = static_cast<float>(m_editor_ref.getWidth());
-  float window_height = static_cast<float>(m_editor_ref.getHeight());
-  float x = static_cast<float>(bounds.getX());
-  float y = window_height - static_cast<float>(bounds.getY() + height);
+  auto* parent = getParentComponent();
+  int parent_x = parent ? parent->getX() : 0;
+  int parent_y = parent ? parent->getY() : 0;
+  float window_w = static_cast<float>(m_editor_ref.getWidth());
+  float window_h = static_cast<float>(m_editor_ref.getHeight());
+  float x = static_cast<float>(bounds.getX() + parent_x);
+  float y = window_h - static_cast<float>(bounds.getY() + parent_y + height);
   float w = static_cast<float>(width);
   float h = static_cast<float>(height);
   std::array<RectVertex, 4> vertices = {
@@ -173,7 +176,7 @@ void RectComponent::resized() {
   auto resolution = glm::vec2(width, height);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
   // Add projection matrix as uniform by getting parent (editor) bounds
-  glm::mat4 projection = glm::ortho(0.0f, window_width, 0.0f, window_height);
+  glm::mat4 projection = glm::ortho(0.0f, window_w, 0.0f, window_h);
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
@@ -254,15 +257,18 @@ void TextComponent::renderOpenGL() {
   glActiveTexture(GL_TEXTURE0);
   // TODO implement vertical and horizontal centering
   auto bounds = getBounds();
-  auto window_height = static_cast<float>(m_editor_ref.getHeight());
+  auto* parent = getParentComponent();
+  int parent_x = parent ? parent->getX() : 0;
+  int parent_y = parent ? parent->getY() : 0;
+  auto w_h = static_cast<float>(m_editor_ref.getHeight());
   float height = static_cast<float>(bounds.getHeight());
   // origin is where to start drawing text
-  glm::vec2 origin(static_cast<float>(bounds.getX()),
-                   window_height - static_cast<float>(bounds.getY()) - height);
+  float origin_x = static_cast<float>(bounds.getX() + parent_x);
+  float origin_y = w_h - static_cast<float>(bounds.getY() + parent_y) - height;
   for (char c_raw : m_text) {
     auto& c = m_font_manager.getCharacter("SplineSansMono-Bold", c_raw, 20);
-    float x = origin.x + c.bearing.x;
-    float y = origin.y - (c.size.y - c.bearing.y);
+    float x = origin_x + c.bearing.x;
+    float y = origin_y - (c.size.y - c.bearing.y);
     float w = c.size.x;
     float h = c.size.y;
     std::array<RectVertex, 4> vertices = {
@@ -274,7 +280,7 @@ void TextComponent::renderOpenGL() {
     glBindTexture(GL_TEXTURE_2D, c.texture);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    origin.x += c.advance;
+    origin_x += c.advance;
   }
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -312,7 +318,9 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
       m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param) {
   m_message_lock.enter();
   addAndMakeVisible(m_knob);
+  m_knob.setBounds(8, 8, 40, 40);
   addAndMakeVisible(m_number);
+  m_number.setBounds(56, 24, 112, 24);
   m_message_lock.exit();
 }
 
@@ -327,17 +335,6 @@ void ParameterComponent::paint(juce::Graphics& g) {
 }
 
 void ParameterComponent::resized() {
-  auto bounds = getBoundsInParent();
-  int x = bounds.getX(), y = bounds.getY();
-  auto transform = juce::AffineTransform::translation(-static_cast<float>(x),
-                                                      -static_cast<float>(y));
-  // Apply offset to everything and then undo it with a transform so that
-  // it in effect only applies to OpenGL, which doesn't respect the parent-child
-  // relationship of component bounds
-  m_knob.setBounds(8 + x, 8 + y, 40, 40);
-  m_number.setBounds(56 + x, 24 + y, 112, 24);
-  m_knob.setTransform(transform);
-  m_number.setTransform(transform);
   m_knob.resized();
   m_number.resized();
 }
