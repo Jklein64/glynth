@@ -36,28 +36,24 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
   m_shader_manager.addProgram("char", "rect", "char");
+  m_shader_manager.addProgram("param", "rect", "param");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
-  auto knob = std::make_unique<KnobComponent>(
-      *this, "knob", m_processor_ref.getLowCutoffParam());
-  auto number = std::make_unique<NumberComponent>(
-      *this, "char", m_processor_ref.getLowCutoffParam());
+  auto parameter = std::make_unique<ParameterComponent>(
+      *this, "param", m_processor_ref.getLowCutoffParam());
 
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
-  addAndMakeVisible(knob.get());
-  knob->setBounds(200, 200, 100, 100);
-  addAndMakeVisible(number.get());
-  number->setBounds(325, 200, 100, 50);
+  addAndMakeVisible(parameter.get());
+  parameter->setBounds(78 + 50, 237 + 50, 184, 56);
   m_message_lock.exit();
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
-  m_shader_components.push_back(std::move(knob));
-  m_shader_components.push_back(std::move(number));
+  m_shader_components.push_back(std::move(parameter));
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -141,7 +137,7 @@ void RectComponent::renderOpenGL() {
 
 void RectComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::white);
-  g.drawRect(getLocalBounds());
+  // g.drawRect(getLocalBounds());
 }
 
 void RectComponent::resized() {
@@ -258,11 +254,11 @@ void TextComponent::renderOpenGL() {
   glActiveTexture(GL_TEXTURE0);
   // TODO implement vertical and horizontal centering
   auto bounds = getBounds();
-  auto parent_height = static_cast<float>(getParentHeight());
+  auto window_height = static_cast<float>(m_editor_ref.getHeight());
   float height = static_cast<float>(bounds.getHeight());
   // origin is where to start drawing text
   glm::vec2 origin(static_cast<float>(bounds.getX()),
-                   parent_height - static_cast<float>(bounds.getY()) - height);
+                   window_height - static_cast<float>(bounds.getY()) - height);
   for (char c_raw : m_text) {
     auto& c = m_font_manager.getCharacter("SplineSansMono-Bold", c_raw, 20);
     float x = origin.x + c.bearing.x;
@@ -287,7 +283,7 @@ void TextComponent::renderOpenGL() {
 
 void TextComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::white);
-  g.drawRect(getLocalBounds());
+  // g.drawRect(getLocalBounds());
 }
 
 void TextComponent::resized() {
@@ -307,4 +303,41 @@ NumberComponent::NumberComponent(GlynthEditor& editor_ref,
 void NumberComponent::renderOpenGL() {
   m_text = fmt::format("{: >7.1f}Hz", m_param->get());
   TextComponent::renderOpenGL();
+}
+
+ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
+                                       const std::string& program_id,
+                                       juce::AudioParameterFloat* param)
+    : ShaderComponent(editor_ref, program_id),
+      m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param) {
+  m_message_lock.enter();
+  addAndMakeVisible(m_knob);
+  addAndMakeVisible(m_number);
+  m_message_lock.exit();
+}
+
+void ParameterComponent::renderOpenGL() {
+  m_knob.renderOpenGL();
+  m_number.renderOpenGL();
+}
+
+void ParameterComponent::paint(juce::Graphics& g) {
+  g.setColour(juce::Colours::green);
+  g.drawRect(getLocalBounds());
+}
+
+void ParameterComponent::resized() {
+  auto bounds = getBoundsInParent();
+  int x = bounds.getX(), y = bounds.getY();
+  auto transform = juce::AffineTransform::translation(-static_cast<float>(x),
+                                                      -static_cast<float>(y));
+  // Apply offset to everything and then undo it with a transform so that
+  // it in effect only applies to OpenGL, which doesn't respect the parent-child
+  // relationship of component bounds
+  m_knob.setBounds(8 + x, 8 + y, 40, 40);
+  m_number.setBounds(56 + x, 24 + y, 112, 24);
+  m_knob.setTransform(transform);
+  m_number.setTransform(transform);
+  m_knob.resized();
+  m_number.resized();
 }

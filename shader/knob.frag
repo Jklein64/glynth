@@ -6,8 +6,8 @@
 const float WEDGE_WIDTH = 0.5;
 const float RING_IN = 10; // for diameter 20px
 const float RING_OUT = 20; // for diameter 40px
-const vec3 ACCENT = vec3(0.9607843137, 0.7529411765, 0.137254902);
-const vec3 ACCENT_FADED = vec3(0.435, 0.353, 0.149);
+const vec4 ACCENT = vec4(0.9607843137, 0.7529411765, 0.137254902, 1.0);
+const vec4 ACCENT_FADED = vec4(0.435, 0.353, 0.149, 1.0);
 
 uniform vec2 u_resolution;
 uniform float u_value;
@@ -64,10 +64,10 @@ float sd_colorbar(vec2 p, vec2 c, float t0, float t1) {
 void main() {
     vec2 p = texcoord * u_resolution;
     vec2 c = vec2(0.5, 0.5) * u_resolution;
-    frag_color = vec4(0, 0, 0, 1);
+    frag_color = vec4(0, 0, 0, 0);
     // -0.5 to 0.5 causes perfect alignment with no overlap but still 1px smoothing
     float in_bar_light = 1 - smoothstep(-0.5, 0.5, sd_colorbar(p, c, 0, u_value));
     float in_bar_dark = 1 - smoothstep(-0.5, 0.5, sd_colorbar(p, c, u_value, 1));
-    frag_color.xyz += in_bar_light * ACCENT;
-    frag_color.xyz += in_bar_dark * ACCENT_FADED;
+    frag_color += in_bar_light * ACCENT;
+    frag_color += in_bar_dark * ACCENT_FADED;
 }

@@ -126,4 +126,23 @@ public:
 
 private:
   juce::AudioParameterFloat* m_param;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NumberComponent)
+};
+
+class ParameterComponent : public ShaderComponent {
+public:
+  ParameterComponent(GlynthEditor& editor_ref, const std::string& program_id,
+                     juce::AudioParameterFloat* param);
+  void renderOpenGL() override;
+  void paint(juce::Graphics& g) override;
+  void resized() override;
+
+private:
+  NumberComponent m_number;
+  KnobComponent m_knob;
+  juce::MessageManager::Lock m_message_lock;
+  glm::vec2 m_offset;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterComponent)
 };
