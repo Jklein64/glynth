@@ -102,6 +102,10 @@ RectComponent::RectComponent(ShaderManager& shader_manager,
   glGenBuffers(1, &m_vbo);
   glGenBuffers(1, &m_ebo);
   glGenVertexArrays(1, &m_vao);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+  std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(),
+               GL_STATIC_DRAW);
 }
 
 RectComponent::~RectComponent() {
@@ -144,10 +148,7 @@ void RectComponent::resized() {
       RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
       RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
       RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)}};
-  std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(),
-               GL_STATIC_DRAW);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(),
                GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RectVertex), nullptr);
   glVertexAttribPointer(
