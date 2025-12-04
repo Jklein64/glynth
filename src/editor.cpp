@@ -225,12 +225,7 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
   FT_UInt pixel_height = static_cast<FT_UInt>(20 * m_display_scale);
   FT_Set_Pixel_Sizes(m_face, 0, pixel_height);
   for (size_t i = 0; i < m_characters.size(); i++) {
-    Character& c = m_characters[i];
-    c = Character(static_cast<FT_ULong>(i), m_face);
-    fmt::println("loaded character '{}'", static_cast<char>(i));
-    fmt::println(" - size: {}, {}", c.size.x, c.size.y);
-    fmt::println(" - bearing: {}, {}", c.bearing.x, c.bearing.y);
-    fmt::println(" - advance: {}", c.advance);
+    m_characters[i] = Character(static_cast<FT_ULong>(i), m_face);
   }
 
   FT_Done_Face(m_face);
