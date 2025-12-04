@@ -21,9 +21,15 @@ FontManager::FontManager(juce::OpenGLContext& context) : m_context(context) {
   }
 }
 
+class FontManagerError : public std::runtime_error {
+public:
+  explicit FontManagerError(const std::string& msg) : std::runtime_error(msg) {}
+  explicit FontManagerError(char* msg) : std::runtime_error(msg) {}
+};
+
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
 
-void FontManager::addFace(std::string_view face_name) {
+void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
   // Get display scale, which is needed to render Freetype fonts correctly.
   // Freetype doesn't distinguish between logical pixels and physical pixels,
   // so creates bitmaps at half the desired resolution on high-dpi devices
@@ -32,17 +38,48 @@ void FontManager::addFace(std::string_view face_name) {
   auto* display = desktop.getDisplays().getPrimaryDisplay();
   m_display_scale = static_cast<float>(display->scale);
   m_message_lock.exit();
-
+  // Load from binary data; assumes face_name is the non-extension filename
   std::string resource_name = std::string(face_name) + "_ttf";
   resource_name = std::regex_replace(resource_name, std::regex("-"), "");
-
   FT_Face face;
   int file_size;
   auto file_base = fonts::getNamedResource(resource_name.c_str(), file_size);
+  if (file_base == nullptr) {
+    throw FontManagerError(
+        fmt::format(R"(No resource with name "{}")", resource_name));
+  }
   if (auto err = FT_New_Memory_Face(m_library,
                                     reinterpret_cast<const FT_Byte*>(file_base),
                                     file_size, 0, &face)) {
     throw FreetypeError(FT_Error_String(err));
+  }
+  // Render face to bitmaps. Interpret height in logical pixels
+  auto& charmap =
+      m_character_maps[std::make_pair(std::string(face_name), pixel_height)];
+  pixel_height = static_cast<FT_UInt>(pixel_height * m_display_scale);
+  FT_Set_Pixel_Sizes(face, 0, pixel_height);
+  for (size_t i = 0; i < charmap.size(); i++) {
+    Character c(static_cast<FT_ULong>(i), face);
+    // Apply display scaling so they're rendered with pixel_height pixels
+    c.size /= m_display_scale;
+    c.bearing /= m_display_scale;
+    c.advance /= static_cast<float>(m_display_scale);
+    charmap[i] = std::move(c);
+  }
+  // Cleanup
+  FT_Done_Face(face);
+}
+
+const FontManager::Character&
+FontManager::getCharacter(std::string_view face_name, char character,
+                          FT_UInt pixel_height) {
+  auto key = std::make_pair(std::string(face_name), pixel_height);
+  if (auto it = m_character_maps.find(key); it != m_character_maps.end()) {
+    return it->second[static_cast<size_t>(character)];
+  } else {
+    throw FontManagerError(fmt::format(
+        R"(Unable to find Character for '{}' in face "{}" with height {})",
+        character, face_name, pixel_height));
   }
 }
 
@@ -88,6 +125,7 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
+  m_font_manager.addFace("SplineSansMono-Bold", 20);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
@@ -95,7 +133,8 @@ void GlynthEditor::newOpenGLContextCreated() {
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
   auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
-  auto text = std::make_unique<TextComponent>(m_shader_manager, "char");
+  auto text =
+      std::make_unique<TextComponent>(m_shader_manager, "char", m_font_manager);
   // This callback is not run on the main (message) thread; JUCE requires lock
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -111,7 +150,6 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
   m_shader_components.push_back(std::move(text));
-  m_font_manager.addFace("SplineSansMono-Medium");
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -265,37 +303,11 @@ void KnobComponent::mouseUp(const juce::MouseEvent&) {
 }
 
 TextComponent::TextComponent(ShaderManager& shader_manager,
-                             const std::string& program_id)
-    : ShaderComponent(shader_manager, program_id) {
+                             const std::string& program_id,
+                             FontManager& font_manager)
+    : ShaderComponent(shader_manager, program_id),
+      m_font_manager(font_manager) {
   m_text = "Glynth";
-  if (FT_Init_FreeType(&m_ft_library)) {
-    fmt::println(stderr, "Failed to init FreeType");
-  };
-
-  // Get display scale, which is needed to render freetype fonts correctly
-  m_message_lock.enter();
-  auto& desktop = juce::Desktop::getInstance();
-  auto* display = desktop.getDisplays().getPrimaryDisplay();
-  m_display_scale = static_cast<float>(display->scale);
-  m_message_lock.exit();
-
-  // TODO move this to static/singleton initialization
-  if (FT_New_Memory_Face(
-          m_ft_library,
-          reinterpret_cast<const FT_Byte*>(fonts::SplineSansMonoBold_ttf),
-          fonts::SplineSansMonoBold_ttfSize, 0, &m_face)) {
-    fmt::println(stderr, "Failed to load font face");
-  }
-
-  // Read 20px tall ASCII characters from font face
-  FT_UInt pixel_height = static_cast<FT_UInt>(20 * m_display_scale);
-  FT_Set_Pixel_Sizes(m_face, 0, pixel_height);
-  for (size_t i = 0; i < m_characters.size(); i++) {
-    m_characters[i] = Character(static_cast<FT_ULong>(i), m_face);
-  }
-
-  FT_Done_Face(m_face);
-
   // Initialize buffers
   using namespace juce::gl;
   glGenVertexArrays(1, &m_vao);
@@ -341,11 +353,11 @@ void TextComponent::renderOpenGL() {
   glm::vec2 origin(static_cast<float>(bounds.getX()),
                    parent_height - static_cast<float>(bounds.getY()) - height);
   for (char c_raw : m_text) {
-    Character c = m_characters[static_cast<size_t>(c_raw)];
-    float x = (origin.x + c.bearing.x / m_display_scale);
-    float y = origin.y - (c.size.y - c.bearing.y) / m_display_scale;
-    float w = c.size.x / m_display_scale;
-    float h = c.size.y / m_display_scale;
+    auto& c = m_font_manager.getCharacter("SplineSansMono-Bold", c_raw, 20);
+    float x = origin.x + c.bearing.x;
+    float y = origin.y - (c.size.y - c.bearing.y);
+    float w = c.size.x;
+    float h = c.size.y;
     std::array<RectVertex, 4> vertices = {
         RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
         RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
@@ -355,7 +367,7 @@ void TextComponent::renderOpenGL() {
     glBindTexture(GL_TEXTURE_2D, c.texture);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    origin.x += c.advance / m_display_scale;
+    origin.x += c.advance;
   }
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -374,29 +386,4 @@ void TextComponent::resized() {
   m_shader_manager.useProgram(m_program_id);
   glm::mat4 projection = glm::ortho(0.0f, w, 0.0f, h);
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
-}
-
-TextComponent::Character::Character(FT_ULong code, FT_Face face) {
-  if (FT_Load_Char(face, code, FT_LOAD_RENDER)) {
-    fmt::println(stderr, "Failed to load character");
-  }
-  // Read from glyph slot
-  FT_GlyphSlot glyph = face->glyph;
-  size = glm::vec2(glyph->bitmap.width, glyph->bitmap.rows);
-  bearing = glm::vec2(glyph->bitmap_left, glyph->bitmap_top);
-  advance = static_cast<float>(glyph->advance.x) / 64;
-  // Create texture from bitmap
-  using namespace juce::gl;
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  // Disable byte-alignment restriction
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-               static_cast<GLsizei>(glyph->bitmap.width),
-               static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
-               GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }

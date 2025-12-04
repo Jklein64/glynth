@@ -24,13 +24,29 @@ public:
 
   FontManager(juce::OpenGLContext& context);
   ~FontManager();
-  void addFace(std::string_view face_name);
-  const Character& getCharacter(std::string_view face_name, char character);
+  void addFace(std::string_view face_name, FT_UInt pixel_height);
+  const Character& getCharacter(std::string_view face_name, char character,
+                                FT_UInt pixel_height);
 
 private:
+  struct pair_hash final {
+  public:
+    // See https://stackoverflow.com/a/55083395
+    template <typename T, typename U>
+    size_t operator()(const std::pair<T, U>& p) const noexcept {
+      uintmax_t hash = std::hash<T>{}(p.first);
+      hash <<= sizeof(uintmax_t) * 4;
+      hash ^= std::hash<U>{}(p.second);
+      return std::hash<uintmax_t>{}(hash);
+    }
+  };
+
   juce::OpenGLContext& m_context;
   FT_Library m_library;
-  std::unordered_map<std::string, std::array<Character, 128>> m_character_maps;
+  // Maps the pair (face_name, pixel_height) -> charmap
+  std::unordered_map<std::pair<std::string, FT_UInt>,
+                     std::array<Character, 128>, pair_hash>
+      m_character_maps;
   // For fetching display scale
   double m_display_scale;
   juce::MessageManager::Lock m_message_lock;
@@ -122,33 +138,17 @@ private:
 
 class TextComponent : public ShaderComponent {
 public:
-  TextComponent(ShaderManager& shader_manager, const std::string& program_id);
+  TextComponent(ShaderManager& shader_manager, const std::string& program_id,
+                FontManager& font_manager);
   ~TextComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
 
-  struct Character {
-    Character() = default;
-    Character(FT_ULong code, FT_Face face);
-    glm::vec2 size;
-    glm::vec2 bearing;
-    float advance;
-    GLuint texture;
-  };
-
 private:
-  FT_Library m_ft_library;
+  FontManager& m_font_manager;
   std::string m_text;
-  // TODO extend to support medium and bold
-  FT_Face m_face;
-  // m_characters[i] is the ASCII character with code i
-  std::array<Character, 128> m_characters;
   GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
-  // For fetching display scale
-  juce::MessageManager::Lock m_message_lock;
-  float m_display_scale;
-
   struct RectVertex {
     glm::vec2 pos;
     glm::vec2 uv;
