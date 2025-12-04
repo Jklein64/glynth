@@ -29,16 +29,12 @@ public:
 
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
 
+void FontManager::setDisplayScale(double display_scale) {
+  m_display_scale = display_scale;
+}
+
 void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
-  assert(m_context.isAttached() && m_context.isActive());
-  // Get display scale, which is needed to render Freetype fonts correctly.
-  // Freetype doesn't distinguish between logical pixels and physical pixels,
-  // so creates bitmaps at half the desired resolution on high-dpi devices
-  m_message_lock.enter();
-  auto& desktop = juce::Desktop::getInstance();
-  auto* display = desktop.getDisplays().getPrimaryDisplay();
-  m_display_scale = static_cast<float>(display->scale);
-  m_message_lock.exit();
+  assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);
   // Load from binary data; assumes face_name is the non-extension filename
   std::string resource_name = std::string(face_name) + "_ttf";
   resource_name = std::regex_replace(resource_name, std::regex("-"), "");
@@ -127,6 +123,15 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
+  m_message_lock.enter();
+  // Get display scale, which is needed to render Freetype fonts correctly.
+  // Freetype doesn't distinguish between logical pixels and physical pixels,
+  // so creates bitmaps at half the desired resolution on high-dpi devices
+  auto& displays = juce::Desktop::getInstance().getDisplays();
+  auto* display = displays.getDisplayForRect(getScreenBounds());
+  m_font_manager.setDisplayScale(display->scale);
+  m_message_lock.exit();
+
   m_font_manager.addFace("SplineSansMono-Bold", 20);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
@@ -137,7 +142,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
   auto text =
       std::make_unique<TextComponent>(m_shader_manager, "char", m_font_manager);
-  // This callback is not run on the main (message) thread; JUCE requires lock
+
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
@@ -148,6 +153,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   addAndMakeVisible(text.get());
   text->setBounds(325, 200, 100, 50);
   m_message_lock.exit();
+
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
@@ -308,7 +314,7 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
                              FontManager& font_manager)
     : ShaderComponent(shader_manager, program_id),
       m_font_manager(font_manager) {
-  m_text = "Glynth";
+  m_text = "20000.2Hz";
   // Initialize buffers
   using namespace juce::gl;
   glGenVertexArrays(1, &m_vao);

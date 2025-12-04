@@ -24,6 +24,7 @@ public:
 
   FontManager(juce::OpenGLContext& context);
   ~FontManager();
+  void setDisplayScale(double display_scale);
   void addFace(std::string_view face_name, FT_UInt pixel_height);
   const Character& getCharacter(std::string_view face_name, char character,
                                 FT_UInt pixel_height);
