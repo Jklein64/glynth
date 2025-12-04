@@ -24,8 +24,8 @@ void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("bg", "ortho", "vt220");
-  m_shader_manager.addProgram("rect", "rect", "rect");
-  m_shader_manager.addProgram("knob", "rect", "knob");
+  m_shader_manager.addProgram("rect", "char", "rect");
+  m_shader_manager.addProgram("knob", "char", "knob");
   m_shader_manager.addProgram("char", "char", "char");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
@@ -130,26 +130,20 @@ void RectComponent::resized() {
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-  // Convert to the portion of the canonical view volume this takes up
   auto bounds = getBounds();
   auto width = bounds.getWidth();
   auto height = bounds.getHeight();
   auto parent_width = static_cast<float>(getParentWidth());
   auto parent_height = static_cast<float>(getParentHeight());
-  float x = static_cast<float>(bounds.getX()) / parent_width * 2 - 1;
-  float y = (1 - static_cast<float>(bounds.getY()) / parent_height) * 2 - 1;
-  float w = static_cast<float>(width) / parent_width * 2;
-  float h = static_cast<float>(height) / parent_height * 2;
-  // This seems backward because the JUCE coordinates are y-down but the ones
-  // OpenGL needs are y-up, and JUCE 0,0 is the top left
-  // 1 --- 2    x,y ------ x+w,y
-  // |  /  |     |     /      |
-  // 0 --- 3    x,y-h ---- x+w,y-h
+  float x = static_cast<float>(bounds.getX());
+  float y = parent_height - static_cast<float>(bounds.getY() + height);
+  float w = static_cast<float>(width);
+  float h = static_cast<float>(height);
   std::array<RectVertex, 4> vertices = {
-      RectVertex{.pos = glm::vec2(x, y - h), .uv = glm::vec2(0, 0)},
-      RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 1)},
-      RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 1)},
-      RectVertex{.pos = glm::vec2(x + w, y - h), .uv = glm::vec2(1, 0)}};
+      RectVertex{.pos = glm::vec2(x, y), .uv = glm::vec2(0, 0)},
+      RectVertex{.pos = glm::vec2(x, y + h), .uv = glm::vec2(0, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
+      RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)}};
   std::array indices = {0u, 1u, 2u, 0u, 2u, 3u};
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(),
                GL_STATIC_DRAW);
@@ -167,6 +161,9 @@ void RectComponent::resized() {
   auto resolution = glm::vec2(width, height);
   fmt::println("setting u_resolution = ({}, {})", resolution.x, resolution.y);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
+  // Add projection matrix as uniform by getting parent (editor) bounds
+  glm::mat4 projection = glm::ortho(0.0f, parent_width, 0.0f, parent_height);
+  m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
 KnobComponent::KnobComponent(ShaderManager& shader_manager,
