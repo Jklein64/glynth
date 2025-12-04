@@ -80,15 +80,16 @@ private:
 
 class KnobComponent : public RectComponent {
 public:
-  KnobComponent(ShaderManager& shader_manager, const std::string& program_id);
+  KnobComponent(ShaderManager& shader_manager, const std::string& program_id,
+                juce::AudioParameterFloat* param);
   void renderOpenGL() override;
   void mouseDown(const juce::MouseEvent& e) override;
   void mouseDrag(const juce::MouseEvent& e) override;
   void mouseUp(const juce::MouseEvent& e) override;
 
 private:
-  // For syncing across UI/OpenGL threads
-  std::atomic<float> m_value = 0.0;
+  juce::AudioParameterFloat* m_param;
+  juce::NormalisableRange<float> m_range;
   std::optional<float> m_down_value = std::nullopt;
   std::optional<float> m_down_y = std::nullopt;
 
@@ -97,19 +98,32 @@ private:
 
 class TextComponent : public ShaderComponent {
 public:
-  TextComponent(ShaderManager& shader_manager, const std::string& program_id,
-                FontManager& font_manager);
+  TextComponent(FontManager& font_manager, ShaderManager& shader_manager,
+                const std::string& program_id);
   ~TextComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
 
+protected:
+  std::string m_text;
+
 private:
   FontManager& m_font_manager;
-  std::string m_text;
   GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
   struct RectVertex {
     glm::vec2 pos;
     glm::vec2 uv;
   };
+};
+
+class NumberComponent : public TextComponent {
+public:
+  NumberComponent(FontManager& font_manager, ShaderManager& shader_manager,
+                  const std::string& program_id,
+                  juce::AudioParameterFloat* param);
+  void renderOpenGL() override;
+
+private:
+  juce::AudioParameterFloat* m_param;
 };

@@ -38,9 +38,11 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("char", "rect", "char");
   auto bg = std::make_unique<BackgroundComponent>(m_shader_manager, "bg");
   auto rect = std::make_unique<RectComponent>(m_shader_manager, "rect");
-  auto knob = std::make_unique<KnobComponent>(m_shader_manager, "knob");
-  auto text =
-      std::make_unique<TextComponent>(m_shader_manager, "char", m_font_manager);
+  auto knob = std::make_unique<KnobComponent>(
+      m_shader_manager, "knob", m_processor_ref.getLowCutoffParam());
+  auto number = std::make_unique<NumberComponent>(
+      m_font_manager, m_shader_manager, "char",
+      m_processor_ref.getLowCutoffParam());
 
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -49,14 +51,14 @@ void GlynthEditor::newOpenGLContextCreated() {
   rect->setBounds(100, 100, 100, 100);
   addAndMakeVisible(knob.get());
   knob->setBounds(200, 200, 100, 100);
-  addAndMakeVisible(text.get());
-  text->setBounds(325, 200, 100, 50);
+  addAndMakeVisible(number.get());
+  number->setBounds(325, 200, 100, 50);
   m_message_lock.exit();
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
-  m_shader_components.push_back(std::move(text));
+  m_shader_components.push_back(std::move(number));
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -180,26 +182,31 @@ void RectComponent::resized() {
 }
 
 KnobComponent::KnobComponent(ShaderManager& shader_manager,
-                             const std::string& program_id)
-    : RectComponent(shader_manager, program_id) {}
+                             const std::string& program_id,
+                             juce::AudioParameterFloat* param)
+    : RectComponent(shader_manager, program_id), m_param(param) {
+  m_range = m_param->getNormalisableRange();
+}
 
 void KnobComponent::renderOpenGL() {
   RectComponent::renderOpenGL();
   // Uniforms can only be updated from the OpenGL thread
   // useProgram() was already called by RectComponent::renderOpenGL()
-  m_shader_manager.setUniform(m_program_id, "u_value", m_value.load());
+  float value = m_range.convertTo0to1(m_param->get());
+  m_shader_manager.setUniform(m_program_id, "u_value", value);
 }
 
 void KnobComponent::mouseDown(const juce::MouseEvent& e) {
   m_down_y = e.position.y;
-  m_down_value = m_value.load();
+  m_down_value = m_range.convertTo0to1(m_param->get());
 }
 
 void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
   if (e.mouseWasDraggedSinceMouseDown() && m_down_value && m_down_y) {
     // Flipped since JUCE inverts the y coordinate
     float delta = (m_down_y.value() - e.position.y) / 100;
-    m_value = std::clamp(m_down_value.value() + delta, 0.0f, 1.0f);
+    float proportion = std::clamp(m_down_value.value() + delta, 0.0f, 1.0f);
+    *m_param = m_range.convertFrom0to1(proportion);
   }
 }
 
@@ -208,9 +215,9 @@ void KnobComponent::mouseUp(const juce::MouseEvent&) {
   m_down_value = std::nullopt;
 }
 
-TextComponent::TextComponent(ShaderManager& shader_manager,
-                             const std::string& program_id,
-                             FontManager& font_manager)
+TextComponent::TextComponent(FontManager& font_manager,
+                             ShaderManager& shader_manager,
+                             const std::string& program_id)
     : ShaderComponent(shader_manager, program_id),
       m_font_manager(font_manager) {
   m_text = "20000.2Hz";
@@ -292,4 +299,15 @@ void TextComponent::resized() {
   m_shader_manager.useProgram(m_program_id);
   glm::mat4 projection = glm::ortho(0.0f, w, 0.0f, h);
   m_shader_manager.setUniform(m_program_id, "u_projection", projection);
+}
+
+NumberComponent::NumberComponent(FontManager& font_manager,
+                                 ShaderManager& shader_manager,
+                                 const std::string& program_id,
+                                 juce::AudioParameterFloat* param)
+    : TextComponent(font_manager, shader_manager, program_id), m_param(param) {}
+
+void NumberComponent::renderOpenGL() {
+  m_text = fmt::format("{:.1f}Hz", m_param->get());
+  TextComponent::renderOpenGL();
 }

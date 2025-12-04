@@ -8,7 +8,6 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
 #ifdef GLYNTH_LOG_TO_FILE
   startTimerHz(1);
 #endif
-  fmt::println(Logger::file, "banana!");
   m_hpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_freq", 1), "High Cutoff",
       juce::NormalisableRange(20.0f, 20000.0f), 20.0f);
@@ -71,8 +70,8 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 }
 
 juce::AudioProcessorEditor* GlynthProcessor::createEditor() {
-  return new juce::GenericAudioProcessorEditor(*this);
-  // return new GlynthEditor(*this);
+  // return new juce::GenericAudioProcessorEditor(*this);
+  return new GlynthEditor(*this);
 }
 
 void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
@@ -97,6 +96,10 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
 }
 
 void GlynthProcessor::timerCallback() { fflush(Logger::file); }
+
+juce::AudioParameterFloat* GlynthProcessor::getLowCutoffParam() {
+  return m_lpf_freq;
+}
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new GlynthProcessor();
