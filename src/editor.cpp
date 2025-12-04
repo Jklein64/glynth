@@ -46,6 +46,10 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
   m_shader_components.push_back(std::move(text));
+  // Configure alpha blending
+  using namespace juce::gl;
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -261,6 +265,7 @@ void TextComponent::renderOpenGL() {
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
+  glActiveTexture(GL_TEXTURE0);
   // TODO implement vertical and horizontal centering
   auto bounds = getBounds();
   auto parent_height = static_cast<float>(getParentHeight());
@@ -280,6 +285,7 @@ void TextComponent::renderOpenGL() {
         RectVertex{.pos = glm::vec2(x + w, y + h), .uv = glm::vec2(1, 1)},
         RectVertex{.pos = glm::vec2(x + w, y), .uv = glm::vec2(1, 0)},
     };
+    glBindTexture(GL_TEXTURE_2D, c.texture);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
     origin.x += c.advance;
@@ -312,12 +318,18 @@ TextComponent::Character::Character(FT_ULong code, FT_Face face) {
   size = glm::vec2(glyph->bitmap.width, glyph->bitmap.rows);
   bearing = glm::vec2(glyph->bitmap_left, glyph->bitmap_top);
   advance = static_cast<float>(glyph->advance.x) / 64;
-  // TODO Create texture from bitmap
-  // using namespace juce::gl;
-  // glGenTextures(1, &texture);
-  // glBindTexture(GL_TEXTURE_2D, texture);
-  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-  //              static_cast<GLsizei>(glyph->bitmap.width),
-  //              static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
-  //              GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
+  // Create texture from bitmap
+  using namespace juce::gl;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  // Disable byte-alignment restriction
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+               static_cast<GLsizei>(glyph->bitmap.width),
+               static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
+               GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
