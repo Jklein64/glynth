@@ -321,7 +321,7 @@ void NumberComponent::renderOpenGL() {
 ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        juce::AudioParameterFloat* param)
-    : ShaderComponent(editor_ref, program_id),
+    : RectComponent(editor_ref, program_id),
       m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param),
       m_label(editor_ref, "char", "Cutoff Freq. (LPF)") {
   m_number.setFontFace("SplineSansMono-Bold", 20);
@@ -337,6 +337,7 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
 }
 
 void ParameterComponent::renderOpenGL() {
+  RectComponent::renderOpenGL();
   m_knob.renderOpenGL();
   m_number.renderOpenGL();
   m_label.renderOpenGL();
@@ -348,6 +349,7 @@ void ParameterComponent::paint(juce::Graphics& g) {
 }
 
 void ParameterComponent::resized() {
+  RectComponent::resized();
   m_knob.resized();
   m_number.resized();
   m_label.resized();

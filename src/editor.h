@@ -134,7 +134,7 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NumberComponent)
 };
 
-class ParameterComponent : public ShaderComponent {
+class ParameterComponent : public RectComponent {
 public:
   ParameterComponent(GlynthEditor& editor_ref, const std::string& program_id,
                      juce::AudioParameterFloat* param);
