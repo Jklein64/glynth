@@ -47,6 +47,8 @@ float squircle_border(vec2 uv, vec2 dims) {
 }
 
 void main() {
+    frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+
     vec4 c = vec4(0.0, 0.0, 0.0, 0.0);
     vec3 iResolution = vec3(840.0, 473.0, 1.0);
     vec2 uv = texcoord.xy;
@@ -72,5 +74,5 @@ void main() {
         smoothstep(-SMOOTH, SMOOTH, squircle(uvE - vec2(0.5, 0.5), vec2(WIDTH, HEIGHT) + 0.05, 0.05)) *
         smoothstep(SMOOTH, -SMOOTH, squircle(uvE - vec2(0.5, 0.5), vec2(WIDTH, HEIGHT) + 0.15, 0.05));
 
-    frag_color = c;
+    frag_color += c;
 }
