@@ -308,6 +308,6 @@ NumberComponent::NumberComponent(FontManager& font_manager,
     : TextComponent(font_manager, shader_manager, program_id), m_param(param) {}
 
 void NumberComponent::renderOpenGL() {
-  m_text = fmt::format("{:.1f}Hz", m_param->get());
+  m_text = fmt::format("{: >7.1f}Hz", m_param->get());
   TextComponent::renderOpenGL();
 }

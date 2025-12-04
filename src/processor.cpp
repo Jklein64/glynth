@@ -18,15 +18,15 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
   addParameter(m_hpf_res);
   m_lpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_freq", 1), "Low Cutoff",
-      juce::NormalisableRange(20.0f, 20000.0f), 20000.0f);
+      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f);
   addParameter(m_lpf_freq);
   m_lpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_res", 1), "Resonance",
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_lpf_res);
 
-  // m_processors.emplace_back(new NoiseGenerator());
-  m_processors.emplace_back(new Synth(*this));
+  m_processors.emplace_back(new NoiseGenerator(*this));
+  // m_processors.emplace_back(new Synth(*this));
   m_processors.emplace_back(new HighPassFilter(*this, m_hpf_freq, m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, m_lpf_freq, m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));

@@ -93,10 +93,14 @@ FontManager::Character::Character(FT_ULong code, FT_Face face) {
   glBindTexture(GL_TEXTURE_2D, texture);
   // Disable byte-alignment restriction
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  // Some characters, like ' ', are actually zero-width, which
+  // confuses OpenGL, since all textures must be at least 1x1. This
+  // snapping is going to fill a single pixel with a garbage value, but
+  // the computed width will be zero, so nothing will be displayed
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-               static_cast<GLsizei>(glyph->bitmap.width),
-               static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
-               GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
+               static_cast<GLsizei>(std::max(glyph->bitmap.width, 1u)),
+               static_cast<GLsizei>(std::max(glyph->bitmap.rows, 1u)), 0,
+               GL_RED, GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
