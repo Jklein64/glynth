@@ -30,6 +30,7 @@ private:
   ShaderManager m_shader_manager;
   FontManager m_font_manager;
   std::vector<std::unique_ptr<ShaderComponent>> m_shader_components;
+  FILE* m_log_file;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthEditor)
 };

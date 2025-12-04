@@ -7,8 +7,9 @@
 #include <glm/ext.hpp>
 
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
-    : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context),
-      m_font_manager(m_context) {
+    : AudioProcessorEditor(&p), processor_ref(p),
+      m_shader_manager(m_context, p.getLogFile()), m_font_manager(m_context),
+      m_log_file(p.getLogFile()) {
   // Must set size for window to show properly
   setSize(840, 473);
   setOpaque(true);

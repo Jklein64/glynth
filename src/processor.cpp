@@ -4,39 +4,48 @@
 #include <fmt/base.h>
 
 GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
-  m_hpf_freq = new juce::AudioParameterFloat(
+#ifdef GLYNTH_LOG_TO_FILE
+  auto path = std::filesystem::path(s_log_dir) / "logs.txt";
+  m_log_file = fopen(path.c_str(), "w");
+  startTimerHz(1);
+#else
+  m_log_file = stdout;
+#endif
+  fmt::println(m_log_file, "banana!");
+  m_state.hpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_freq", 1), "High Cutoff",
       juce::NormalisableRange(20.0f, 20000.0f), 20.0f);
-  addParameter(m_hpf_freq);
-  m_hpf_res = new juce::AudioParameterFloat(
+  addParameter(m_state.hpf_freq);
+  m_state.hpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_res", 1), "Resonance",
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
-  addParameter(m_hpf_res);
-  m_lpf_freq = new juce::AudioParameterFloat(
+  addParameter(m_state.hpf_res);
+  m_state.lpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_freq", 1), "Low Cutoff",
       juce::NormalisableRange(20.0f, 20000.0f), 20000.0f);
-  addParameter(m_lpf_freq);
-  m_lpf_res = new juce::AudioParameterFloat(
+  addParameter(m_state.lpf_freq);
+  m_state.lpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_res", 1), "Resonance",
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
-  addParameter(m_lpf_res);
+  addParameter(m_state.lpf_res);
 
   // m_processors.emplace_back(new NoiseGenerator());
-  m_processors.emplace_back(new Synth());
+  m_processors.emplace_back(new Synth(*this));
   m_processors.emplace_back(
-      new HighPassFilter(getTotalNumOutputChannels(), m_hpf_freq, m_hpf_res));
+      new HighPassFilter(*this, m_state.hpf_freq, m_state.hpf_res));
   m_processors.emplace_back(
-      new LowPassFilter(getTotalNumOutputChannels(), m_lpf_freq, m_lpf_res));
-  m_processors.emplace_back(new CorruptionSilencer());
+      new LowPassFilter(*this, m_state.lpf_freq, m_state.lpf_res));
+  m_processors.emplace_back(new CorruptionSilencer(*this));
 }
 
-GlynthProcessor::~GlynthProcessor() {}
+GlynthProcessor::~GlynthProcessor() { fclose(m_log_file); }
 
 void GlynthProcessor::prepareToPlay(double sample_rate, int samples_per_block) {
-  fmt::println("prepareToPlay: sample_rate = {}, samples_per_block = {}",
+  fmt::println(m_log_file,
+               "prepareToPlay: sample_rate = {}, samples_per_block = {}",
                sample_rate, samples_per_block);
-  fmt::println("num_inputs = {}", getTotalNumInputChannels());
-  fmt::println("num_outputs = {}", getTotalNumOutputChannels());
+  fmt::println(m_log_file, "num_inputs = {}", getTotalNumInputChannels());
+  fmt::println(m_log_file, "num_outputs = {}", getTotalNumOutputChannels());
 
   for (auto& processor : m_processors) {
     processor->prepareToPlay(sample_rate, samples_per_block);
@@ -61,42 +70,48 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(ch, 0, buffer.getNumSamples());
   }
 
-  // for (auto&& msg_metadata : midi_messages) {
-  //   auto sample = msg_metadata.samplePosition;
-  //   auto&& msg = msg_metadata.getMessage();
-  //   auto&& description = msg.getDescription().toStdString();
-  //   fmt::println("MIDI message at buffer sample {}: {}", sample,
-  //   description);
-  // }
-
   for (auto& processor : m_processors) {
     processor->processBlock(buffer, midi_messages);
   }
 }
 
 juce::AudioProcessorEditor* GlynthProcessor::createEditor() {
-  // return new juce::GenericAudioProcessorEditor(*this);
-  return new GlynthEditor(*this);
+  return new juce::GenericAudioProcessorEditor(*this);
+  // return new GlynthEditor(*this);
 }
 
 void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
   // Stores parameters in the memory block, either as raw data or using the
   // XML or ValueTree classes as intermediaries to make it easy to save and load
   // complex data.
-  juce::ignoreUnused(dest_data);
+  fmt::println(m_log_file, "Calling getStateInformation");
+  auto bytes = m_state.pack();
+  dest_data.append(bytes.data(), bytes.size());
 }
 
 void GlynthProcessor::setStateInformation(const void* data, int size) {
   // Restore parameters from this memory block, whose contents will have been
   // created by the getStateInformation() call.
-  juce::ignoreUnused(data, size);
+  fmt::println(m_log_file, "Calling setStateInformation");
+  m_state.unpack(std::span{reinterpret_cast<const std::byte*>(data),
+                           static_cast<size_t>(size)});
 }
+
+FILE* const GlynthProcessor::getLogFile() { return m_log_file; }
+
+void GlynthProcessor::timerCallback() { fflush(m_log_file); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new GlynthProcessor();
 }
 
 //==============================================================================
+
+SubProcessor::SubProcessor(GlynthProcessor& processor_ref)
+    : m_processor_ref(processor_ref), m_log_file(processor_ref.getLogFile()) {}
+
+CorruptionSilencer::CorruptionSilencer(GlynthProcessor& processor_ref)
+    : SubProcessor(processor_ref) {}
 
 void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer,
                                       juce::MidiBuffer&) {
@@ -110,19 +125,20 @@ void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer,
       if (std::isnan(x) || std::isinf(x)) {
         should_silence = true;
         if (!warned) {
-          fmt::println(stderr, "Warning: audio buffer contains inf or nan");
+          fmt::println(m_log_file, "Warning: audio buffer contains inf or nan");
           warned = true;
         }
       } else if (std::abs(x) > 2.0f) {
         should_silence = true;
         if (!warned) {
-          fmt::println(stderr, "Warning: sample significantly out of range");
+          fmt::println(m_log_file,
+                       "Warning: sample significantly out of range");
           warned = true;
         }
       } else if (std::abs(x) > 1.0f) {
         samples[i] = std::clamp(x, -1.0f, 1.0f);
         if (!warned) {
-          fmt::println(stderr, "Warning: clamped out of range sample");
+          fmt::println(m_log_file, "Warning: clamped out of range sample");
           warned = true;
         }
       }
@@ -135,7 +151,8 @@ void CorruptionSilencer::processBlock(juce::AudioBuffer<float>& buffer,
   }
 }
 
-NoiseGenerator::NoiseGenerator() : m_gen(m_rd()), m_dist(-0.5f, 0.5f) {}
+NoiseGenerator::NoiseGenerator(GlynthProcessor& processor_ref)
+    : SubProcessor(processor_ref), m_gen(m_rd()), m_dist(-0.5f, 0.5f) {}
 
 void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer,
                                   juce::MidiBuffer&) {
@@ -146,13 +163,15 @@ void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer,
   }
 }
 
-BiquadFilter::BiquadFilter(int num_channels,
+BiquadFilter::BiquadFilter(GlynthProcessor& processor_ref,
                            juce::AudioParameterFloat* freq_param,
                            juce::AudioParameterFloat* res_param)
-    : m_freq_param(freq_param), m_res_param(res_param) {
+    : SubProcessor(processor_ref), m_freq_param(freq_param),
+      m_res_param(res_param) {
   // Initialize from param values
   m_freq = *m_freq_param;
   m_res = *m_res_param;
+  int num_channels = processor_ref.getTotalNumOutputChannels();
   for (size_t ch = 0; ch < static_cast<size_t>(num_channels); ch++) {
     // Creates a default state
     m_states.emplace_back();
@@ -216,7 +235,7 @@ void HighPassFilter::configure(float freq, float res) {
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
 }
 
-Synth::Synth() {
+Synth::Synth(GlynthProcessor& processor_ref) : SubProcessor(processor_ref) {
   m_voices.emplace_back();
   m_voices.emplace_back();
   m_voices.emplace_back();
@@ -235,7 +254,8 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       // Process the midi message
       auto&& msg = (*it).getMessage();
       auto&& description = msg.getDescription().toStdString();
-      fmt::println("MIDI message at buffer sample {}: {}", i, description);
+      fmt::println(m_log_file, "MIDI message at buffer sample {}: {}", i,
+                   description);
 
       if (msg.isNoteOn()) {
         auto note = msg.getNoteNumber();
@@ -309,4 +329,24 @@ double SynthVoice::sample() {
 void SynthVoice::reset() {
   active = false;
   m_angle = 0;
+}
+
+std::vector<std::byte> State::pack() {
+  Raw raw;
+  raw.hpf_freq = hpf_freq->get();
+  raw.hpf_res = hpf_res->get();
+  raw.lpf_freq = lpf_freq->get();
+  raw.lpf_res = lpf_res->get();
+  std::vector<std::byte> bytes;
+  std::byte* begin = reinterpret_cast<std::byte*>(&raw);
+  bytes.insert(bytes.begin(), begin, begin + sizeof(Raw));
+  return bytes;
+}
+
+void State::unpack(std::span<const std::byte> bytes) {
+  Raw raw = *reinterpret_cast<const Raw*>(bytes.data());
+  hpf_freq->setValueNotifyingHost(raw.hpf_freq);
+  hpf_res->setValueNotifyingHost(raw.hpf_res);
+  lpf_freq->setValueNotifyingHost(raw.lpf_freq);
+  lpf_res->setValueNotifyingHost(raw.lpf_res);
 }

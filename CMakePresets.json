@@ -12,7 +12,8 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
                 "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-                "GLYNTH_HOT_SHADER_RELOAD": false
+                "GLYNTH_HOT_SHADER_RELOAD": false,
+                "GLYNTH_LOG_TO_FILE": false
             }
         },
         {
@@ -26,7 +27,23 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
                 "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-                "GLYNTH_HOT_SHADER_RELOAD": true
+                "GLYNTH_HOT_SHADER_RELOAD": true,
+                "GLYNTH_LOG_TO_FILE": false
+            }
+        },
+        {
+            "name": "debug-logic",
+            "displayName": "Debug (Logic)",
+            "description": "Debug configuration that logs to a file instead of stdout",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_C_COMPILER": "/usr/bin/clang",
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+                "GLYNTH_HOT_SHADER_RELOAD": true,
+                "GLYNTH_LOG_TO_FILE": true
             }
         }
     ]

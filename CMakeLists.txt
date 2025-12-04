@@ -91,8 +91,11 @@ target_sources(
 target_compile_features(glynth PRIVATE cxx_std_20)
 option(GLYNTH_HOT_SHADER_RELOAD "Enable hot reloading of shaders" OFF)
 message("GLYNTH_HOT_SHADER_RELOAD = ${GLYNTH_HOT_SHADER_RELOAD}")
-# Generator expression for Hot Shader Reloading (HSR)
+option(GLYNTH_LOG_TO_FILE "Log stdout to a file" OFF)
+message("GLYNTH_LOG_TO_FILE = ${GLYNTH_LOG_TO_FILE}")
+# Generator expressions
 set(HSR_GEN $<BOOL:${GLYNTH_HOT_SHADER_RELOAD}>)
+set(LOG_GEN $<BOOL:${GLYNTH_LOG_TO_FILE}>)
 target_compile_definitions(
     glynth
     PRIVATE
@@ -102,6 +105,8 @@ target_compile_definitions(
         JUCE_DONT_ASSERT_ON_GLSL_COMPILE_ERROR=1
         $<${HSR_GEN}:GLYNTH_HSR>
         $<${HSR_GEN}:GLYNTH_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shader">
+        $<${LOG_GEN}:GLYNTH_LOG_TO_FILE>
+        $<${LOG_GEN}:GLYNTH_LOG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/out">
 )
 
 target_link_libraries(

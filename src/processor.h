@@ -1,10 +1,33 @@
 #pragma once
 
+#include <filesystem>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <random>
+#include <span>
 
+class State {
+public:
+  std::vector<std::byte> pack();
+  void unpack(std::span<const std::byte> bytes);
+
+  juce::AudioParameterFloat* hpf_freq;
+  juce::AudioParameterFloat* hpf_res;
+  juce::AudioParameterFloat* lpf_freq;
+  juce::AudioParameterFloat* lpf_res;
+
+private:
+  struct Raw {
+    float hpf_freq;
+    float hpf_res;
+    float lpf_freq;
+    float lpf_res;
+  };
+};
+
+class GlynthProcessor;
 class SubProcessor {
 public:
+  SubProcessor(GlynthProcessor& processor_ref);
   virtual ~SubProcessor() = default;
   virtual void processBlock(juce::AudioBuffer<float>& buffer,
                             juce::MidiBuffer& midi_messages) = 0;
@@ -13,10 +36,14 @@ public:
     // Default prepareToPlay is a no-op
     juce::ignoreUnused(sample_rate, samples_per_block);
   }
+
+protected:
+  GlynthProcessor& m_processor_ref;
+  FILE* m_log_file;
 };
 
 //==============================================================================
-class GlynthProcessor final : public juce::AudioProcessor {
+class GlynthProcessor final : public juce::AudioProcessor, public juce::Timer {
 public:
   //==============================================================================
   GlynthProcessor();
@@ -54,24 +81,28 @@ public:
   void getStateInformation(juce::MemoryBlock& dest_data) override;
   void setStateInformation(const void* data, int size) override;
 
+  FILE* const getLogFile();
+  void timerCallback() override;
+
 private:
   //==============================================================================
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
 
-  juce::AudioParameterFloat* m_hpf_freq;
-  juce::AudioParameterFloat* m_hpf_res;
-  juce::AudioParameterFloat* m_lpf_freq;
-  juce::AudioParameterFloat* m_lpf_res;
+#ifdef GLYNTH_LOG_DIR
+  inline static auto s_log_dir = std::filesystem::path(GLYNTH_LOG_DIR);
+#endif
 
+  State m_state;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
+  FILE* m_log_file;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };
 
 class CorruptionSilencer : public SubProcessor {
 public:
-  CorruptionSilencer() = default;
+  CorruptionSilencer(GlynthProcessor& processor_ref);
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
 
@@ -81,7 +112,7 @@ private:
 
 class NoiseGenerator : public SubProcessor {
 public:
-  NoiseGenerator();
+  NoiseGenerator(GlynthProcessor& processor_ref);
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
 
@@ -95,7 +126,8 @@ private:
 
 class BiquadFilter : public SubProcessor {
 public:
-  BiquadFilter(int num_channels, juce::AudioParameterFloat* freq_param,
+  BiquadFilter(GlynthProcessor& processor_ref,
+               juce::AudioParameterFloat* freq_param,
                juce::AudioParameterFloat* res_param);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
@@ -162,7 +194,7 @@ private:
 };
 class Synth : public SubProcessor {
 public:
-  Synth();
+  Synth(GlynthProcessor& processor_ref);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
