@@ -30,6 +30,7 @@ public:
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
 
 void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
+  assert(m_context.isAttached() && m_context.isActive());
   // Get display scale, which is needed to render Freetype fonts correctly.
   // Freetype doesn't distinguish between logical pixels and physical pixels,
   // so creates bitmaps at half the desired resolution on high-dpi devices
@@ -73,6 +74,7 @@ void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
 const FontManager::Character&
 FontManager::getCharacter(std::string_view face_name, char character,
                           FT_UInt pixel_height) {
+  assert(m_context.isAttached() && m_context.isActive());
   auto key = std::make_pair(std::string(face_name), pixel_height);
   if (auto it = m_character_maps.find(key); it != m_character_maps.end()) {
     return it->second[static_cast<size_t>(character)];
