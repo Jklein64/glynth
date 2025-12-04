@@ -6,9 +6,74 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <glm/ext.hpp>
+#include <regex>
+
+class FreetypeError : public std::runtime_error {
+public:
+  explicit FreetypeError(const std::string& msg) : std::runtime_error(msg) {}
+  explicit FreetypeError(char* msg) : std::runtime_error(msg) {}
+};
+
+FontManager::FontManager(juce::OpenGLContext& context) : m_context(context) {
+  FT_Error err;
+  if (err = FT_Init_FreeType(&m_library); err != 0) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+}
+
+FontManager::~FontManager() { FT_Done_FreeType(m_library); }
+
+void FontManager::addFace(std::string_view face_name) {
+  // Get display scale, which is needed to render Freetype fonts correctly.
+  // Freetype doesn't distinguish between logical pixels and physical pixels,
+  // so creates bitmaps at half the desired resolution on high-dpi devices
+  m_message_lock.enter();
+  auto& desktop = juce::Desktop::getInstance();
+  auto* display = desktop.getDisplays().getPrimaryDisplay();
+  m_display_scale = static_cast<float>(display->scale);
+  m_message_lock.exit();
+
+  std::string resource_name = std::string(face_name) + "_ttf";
+  resource_name = std::regex_replace(resource_name, std::regex("-"), "");
+
+  FT_Face face;
+  int file_size;
+  auto file_base = fonts::getNamedResource(resource_name.c_str(), file_size);
+  if (auto err = FT_New_Memory_Face(m_library,
+                                    reinterpret_cast<const FT_Byte*>(file_base),
+                                    file_size, 0, &face)) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+}
+
+FontManager::Character::Character(FT_ULong code, FT_Face face) {
+  if (auto err = FT_Load_Char(face, code, FT_LOAD_RENDER)) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+  // Read from glyph slot
+  FT_GlyphSlot glyph = face->glyph;
+  size = glm::vec2(glyph->bitmap.width, glyph->bitmap.rows);
+  bearing = glm::vec2(glyph->bitmap_left, glyph->bitmap_top);
+  advance = static_cast<float>(glyph->advance.x) / 64;
+  // Create texture from bitmap
+  using namespace juce::gl;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  // Disable byte-alignment restriction
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+               static_cast<GLsizei>(glyph->bitmap.width),
+               static_cast<GLsizei>(glyph->bitmap.rows), 0, GL_RED,
+               GL_UNSIGNED_BYTE, glyph->bitmap.buffer);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
 
 GlynthEditor::GlynthEditor(GlynthProcessor& p)
-    : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context) {
+    : AudioProcessorEditor(&p), processor_ref(p), m_shader_manager(m_context),
+      m_font_manager(m_context) {
   // Must set size for window to show properly
   setSize(840, 473);
   setOpaque(true);
@@ -46,6 +111,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(knob));
   m_shader_components.push_back(std::move(text));
+  m_font_manager.addFace("SplineSansMono-Medium");
 }
 
 void GlynthEditor::renderOpenGL() {

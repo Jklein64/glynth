@@ -11,6 +11,31 @@
 #include <juce_opengl/juce_opengl.h>
 #include <vector>
 
+class FontManager {
+public:
+  struct Character {
+    Character() = default;
+    Character(FT_ULong code, FT_Face face);
+    glm::vec2 size;
+    glm::vec2 bearing;
+    float advance;
+    GLuint texture;
+  };
+
+  FontManager(juce::OpenGLContext& context);
+  ~FontManager();
+  void addFace(std::string_view face_name);
+  const Character& getCharacter(std::string_view face_name, char character);
+
+private:
+  juce::OpenGLContext& m_context;
+  FT_Library m_library;
+  std::unordered_map<std::string, std::array<Character, 128>> m_character_maps;
+  // For fetching display scale
+  double m_display_scale;
+  juce::MessageManager::Lock m_message_lock;
+};
+
 class ShaderComponent;
 class GlynthEditor final : public juce::AudioProcessorEditor,
                            public juce::OpenGLRenderer {
@@ -28,6 +53,7 @@ private:
   juce::MessageManager::Lock m_message_lock;
   juce::OpenGLContext m_context;
   ShaderManager m_shader_manager;
+  FontManager m_font_manager;
   std::vector<std::unique_ptr<ShaderComponent>> m_shader_components;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthEditor)
