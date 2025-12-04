@@ -266,7 +266,6 @@ void RectComponent::resized() {
   // Must use shader before setting uniforms
   m_shader_manager.useProgram(m_program_id);
   auto resolution = glm::vec2(width, height);
-  fmt::println("setting u_resolution = ({}, {})", resolution.x, resolution.y);
   m_shader_manager.setUniform(m_program_id, "u_resolution", resolution);
   // Add projection matrix as uniform by getting parent (editor) bounds
   glm::mat4 projection = glm::ortho(0.0f, parent_width, 0.0f, parent_height);
