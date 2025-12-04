@@ -129,6 +129,7 @@ void ShaderManager::markDirty(const ProgramId& id) {
 
 void ShaderManager::tryUpdateDirty() {
 #ifdef GLYNTH_HSR
+  std::lock_guard<std::mutex> lk(m_mutex);
   if (!m_dirty.empty()) {
     for (auto& id : m_dirty) {
       ProgramMetadata& metadata = m_metadata.at(id);
