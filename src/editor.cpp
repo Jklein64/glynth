@@ -250,10 +250,6 @@ TextComponent::TextComponent(ShaderManager& shader_manager,
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-  // Add projection matrix as uniform
-  m_shader_manager.useProgram(m_program_id);
-  glm::mat4 projection = glm::ortho(0.0f, 840.0f, 0.0f, 473.0f);
-  m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
 TextComponent::~TextComponent() {
@@ -267,6 +263,7 @@ void TextComponent::renderOpenGL() {
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
+  // TODO implement vertical and horizontal centering
   auto bounds = getBounds();
   auto parent_height = static_cast<float>(getParentHeight());
   float height = static_cast<float>(bounds.getHeight());
@@ -289,7 +286,6 @@ void TextComponent::renderOpenGL() {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
     origin.x += c.advance;
   }
-
   // Unbind buffers
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
@@ -298,6 +294,15 @@ void TextComponent::renderOpenGL() {
 void TextComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::white);
   g.drawRect(getLocalBounds());
+}
+
+void TextComponent::resized() {
+  // Add projection matrix as uniform by getting parent (editor) bounds
+  float w = static_cast<float>(getParentWidth());
+  float h = static_cast<float>(getParentHeight());
+  m_shader_manager.useProgram(m_program_id);
+  glm::mat4 projection = glm::ortho(0.0f, w, 0.0f, h);
+  m_shader_manager.setUniform(m_program_id, "u_projection", projection);
 }
 
 TextComponent::Character::Character(FT_ULong code, FT_Face face) {

@@ -100,6 +100,7 @@ public:
   ~TextComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
+  void resized() override;
 
   struct Character {
     Character() = default;
@@ -118,6 +119,7 @@ private:
   // m_characters[i] is the ASCII character with code i
   std::array<Character, 128> m_characters;
   GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
+  juce::MessageManager::Lock m_message_lock;
 
   struct RectVertex {
     glm::vec2 pos;
