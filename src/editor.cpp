@@ -40,12 +40,12 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("param", "rect", "param");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
-  std::array<std::unique_ptr<ParameterComponent>, 2> knobs = {
+  std::array<std::unique_ptr<ParameterComponent>, 4> params = {
       // Row-major order of grid of knobs
       std::make_unique<ParameterComponent>(*this, "param", "lpf_freq"),
       std::make_unique<ParameterComponent>(*this, "param", "hpf_freq"),
-      // std::make_unique<ParameterComponent>(*this, "param", "lpf_res"),
-      // std::make_unique<ParameterComponent>(*this, "param", "hpf_res"),
+      std::make_unique<ParameterComponent>(*this, "param", "lpf_res"),
+      std::make_unique<ParameterComponent>(*this, "param", "hpf_res"),
   };
 
   m_message_lock.enter();
@@ -53,24 +53,20 @@ void GlynthEditor::newOpenGLContextCreated() {
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
-  addAndMakeVisible(knobs[0].get());
-  addAndMakeVisible(knobs[1].get());
-  // Draw the grid of knobs, starting at 128, 287
-  int x = 128, y = 287, w = 184, h = 56;
-  knobs[0]->setBounds(x, y, w, h);
-  knobs[1]->setBounds(x + w + 16, y + h + 8, w, h);
-  // for (size_t i = 0; i < knobs.size(); i++) {
-  //   int x_offset = (w + 16) * static_cast<int>(i);
-  //   int y_offset = (y + 8) * static_cast<int>(i);
-  //   knobs[i]->setBounds(x + x_offset, y + y_offset, w, h);
-  // }
+  // Draw the grid of knobs
+  int x = 128, y = 287, w = 184, h = 56, ncols = 2;
+  for (size_t i = 0; i < params.size(); i++) {
+    addAndMakeVisible(params[i].get());
+    int x_offset = (w + 16) * (static_cast<int>(i) % ncols);
+    int y_offset = (h + 8) * (static_cast<int>(i) / ncols);
+    params[i]->setBounds(x + x_offset, y + y_offset, w, h);
+  }
   m_message_lock.exit();
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
-  // m_shader_components.push_back(std::move(knobs[0]));
-  for (auto& knob : knobs) {
-    m_shader_components.push_back(std::move(knob));
+  for (auto& param : params) {
+    m_shader_components.push_back(std::move(param));
   }
 }
 
