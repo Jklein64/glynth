@@ -54,18 +54,18 @@ public:
 
   void timerCallback() override;
   // All parameters are float values
-  juce::AudioParameterFloat* getParamById(std::string_view id);
+  juce::AudioParameterFloat& getParamById(std::string_view id);
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
 
-  juce::AudioParameterFloat* m_hpf_freq;
-  juce::AudioParameterFloat* m_hpf_res;
-  juce::AudioParameterFloat* m_lpf_freq;
-  juce::AudioParameterFloat* m_lpf_res;
-  juce::AudioParameterFloat* m_attack_ms;
-  juce::AudioParameterFloat* m_decay_ms;
+  juce::AudioParameterFloat& m_hpf_freq;
+  juce::AudioParameterFloat& m_hpf_res;
+  juce::AudioParameterFloat& m_lpf_freq;
+  juce::AudioParameterFloat& m_lpf_res;
+  juce::AudioParameterFloat& m_attack_ms;
+  juce::AudioParameterFloat& m_decay_ms;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)

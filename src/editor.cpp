@@ -196,12 +196,12 @@ KnobComponent::KnobComponent(GlynthEditor& editor_ref,
                              std::string_view param_id)
     : RectComponent(editor_ref, program_id),
       m_param(m_processor_ref.getParamById(param_id)) {
-  m_range = m_param->getNormalisableRange();
+  m_range = m_param.getNormalisableRange();
 }
 
 void KnobComponent::renderOpenGL() {
   // Uniforms can only be updated from the OpenGL thread
-  float value = m_range.convertTo0to1(m_param->get());
+  float value = m_range.convertTo0to1(m_param);
   m_shader_manager.useProgram(m_program_id);
   m_shader_manager.setUniform(m_program_id, "u_value", value);
   RectComponent::renderOpenGL();
@@ -209,7 +209,7 @@ void KnobComponent::renderOpenGL() {
 
 void KnobComponent::mouseDown(const juce::MouseEvent& e) {
   m_down_y = e.position.y;
-  m_down_value = m_range.convertTo0to1(m_param->get());
+  m_down_value = m_range.convertTo0to1(m_param);
 }
 
 void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
@@ -217,7 +217,7 @@ void KnobComponent::mouseDrag(const juce::MouseEvent& e) {
     // Flipped since JUCE inverts the y coordinate
     float delta = (m_down_y.value() - e.position.y) / 100;
     float proportion = std::clamp(m_down_value.value() + delta, 0.0f, 1.0f);
-    *m_param = m_range.convertFrom0to1(proportion);
+    m_param = m_range.convertFrom0to1(proportion);
   }
 }
 
@@ -327,8 +327,8 @@ NumberComponent::NumberComponent(GlynthEditor& editor_ref,
       m_param(m_processor_ref.getParamById(param_id)), m_format(format) {}
 
 void NumberComponent::renderOpenGL() {
-  std::string suffix = m_param->getLabel().toStdString();
-  m_text = fmt::format(fmt::runtime(m_format), m_param->get(), suffix);
+  std::string suffix = m_param.getLabel().toStdString();
+  m_text = fmt::format(fmt::runtime(m_format), m_param.get(), suffix);
   TextComponent::renderOpenGL();
 }
 
@@ -340,7 +340,7 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
       m_param(m_processor_ref.getParamById(param_id)),
       m_number(editor_ref, "char", param_id, format),
       m_knob(editor_ref, "knob", param_id),
-      m_label(editor_ref, "char", m_param->name.toStdString()) {
+      m_label(editor_ref, "char", m_param.name.toStdString()) {
   m_number.setFontFace("SplineSansMono-Bold", 20);
   m_label.setFontFace("SplineSansMono-Medium", 10);
   m_message_lock.enter();
@@ -381,8 +381,8 @@ void ParameterComponent::resized() {
 // private, even though the base classes have this function as public.
 // Normally a static_cast would work, but all base classes with the function
 // declared publicly are abstract, so can't be casted to
-static void setParameterToDefault(juce::AudioProcessorParameter* param) {
-  param->setValueNotifyingHost(param->getDefaultValue());
+static void setParameterToDefault(juce::AudioProcessorParameter& param) {
+  param.setValueNotifyingHost(param.getDefaultValue());
 }
 
 void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {

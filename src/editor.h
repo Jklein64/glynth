@@ -92,7 +92,7 @@ public:
   void mouseUp(const juce::MouseEvent& e) override;
 
 private:
-  juce::AudioParameterFloat* m_param;
+  juce::AudioParameterFloat& m_param;
   juce::NormalisableRange<float> m_range;
   std::optional<float> m_down_value = std::nullopt;
   std::optional<float> m_down_y = std::nullopt;
@@ -130,7 +130,7 @@ public:
   void renderOpenGL() override;
 
 private:
-  juce::AudioParameterFloat* m_param;
+  juce::AudioParameterFloat& m_param;
   std::string m_format;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NumberComponent)
@@ -146,7 +146,7 @@ public:
   void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
-  juce::AudioParameterFloat* m_param;
+  juce::AudioParameterFloat& m_param;
   NumberComponent m_number;
   KnobComponent m_knob;
   TextComponent m_label;

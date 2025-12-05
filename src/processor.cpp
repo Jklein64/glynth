@@ -2,47 +2,72 @@
 #include "editor.h"
 #include "logger.h"
 
-#include <fmt/base.h>
+#include <fmt/format.h>
 
-GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
+GlynthProcessor::GlynthProcessor()
+    : AudioProcessor(s_io_layouts),
+      m_hpf_freq(*(new juce::AudioParameterFloat(
+          juce::ParameterID("hpf_freq", 1), "Cutoff Freq. (HPF)",
+          juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20.0f,
+          juce::AudioParameterFloatAttributes().withLabel("Hz")))),
+      m_hpf_res(*(new juce::AudioParameterFloat(
+          juce::ParameterID("hpf_res", 1), "Resonance (HPF)",
+          juce::NormalisableRange(0.1f, 10.0f), 0.71f,
+          juce::AudioParameterFloatAttributes().withLabel("")))),
+      m_lpf_freq(*(new juce::AudioParameterFloat(
+          juce::ParameterID("lpf_freq", 1), "Cutoff Freq. (LPF)",
+          juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f,
+          juce::AudioParameterFloatAttributes().withLabel("Hz")))),
+      m_lpf_res(*(new juce::AudioParameterFloat(
+          juce::ParameterID("lpf_res", 1), "Resonance (LPF)",
+          juce::NormalisableRange(0.1f, 10.0f), 0.71f,
+          juce::AudioParameterFloatAttributes().withLabel("")))),
+      m_attack_ms(*(new juce::AudioParameterFloat(
+          juce::ParameterID("attack", 1), "Attack (Env)",
+          juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 10.0f,
+          juce::AudioParameterFloatAttributes().withLabel("ms")))),
+      m_decay_ms(*(new juce::AudioParameterFloat(
+          juce::ParameterID("decay", 1), "Decay (Env)",
+          juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
+          juce::AudioParameterFloatAttributes().withLabel("ms")))) {
 #ifdef GLYNTH_LOG_TO_FILE
   startTimerHz(1);
 #endif
-  m_hpf_freq = new juce::AudioParameterFloat(
-      juce::ParameterID("hpf_freq", 1), "Cutoff Freq. (HPF)",
-      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20.0f,
-      juce::AudioParameterFloatAttributes().withLabel("Hz"));
-  addParameter(m_hpf_freq);
-  m_hpf_res = new juce::AudioParameterFloat(
-      juce::ParameterID("hpf_res", 1), "Resonance (HPF)",
-      juce::NormalisableRange(0.1f, 10.0f), 0.71f,
-      juce::AudioParameterFloatAttributes().withLabel(""));
-  addParameter(m_hpf_res);
-  m_lpf_freq = new juce::AudioParameterFloat(
-      juce::ParameterID("lpf_freq", 1), "Cutoff Freq. (LPF)",
-      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f,
-      juce::AudioParameterFloatAttributes().withLabel("Hz"));
-  addParameter(m_lpf_freq);
-  m_lpf_res = new juce::AudioParameterFloat(
-      juce::ParameterID("lpf_res", 1), "Resonance (LPF)",
-      juce::NormalisableRange(0.1f, 10.0f), 0.71f,
-      juce::AudioParameterFloatAttributes().withLabel(""));
-  addParameter(m_lpf_res);
-  m_attack_ms = new juce::AudioParameterFloat(
-      juce::ParameterID("attack", 1), "Attack (Env)",
-      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 10.0f,
-      juce::AudioParameterFloatAttributes().withLabel("ms"));
-  addParameter(m_attack_ms);
-  m_decay_ms = new juce::AudioParameterFloat(
-      juce::ParameterID("decay", 1), "Decay (Env)",
-      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
-      juce::AudioParameterFloatAttributes().withLabel("ms"));
-  addParameter(m_decay_ms);
+  // m_hpf_freq = new juce::AudioParameterFloat(
+  //     juce::ParameterID("hpf_freq", 1), "Cutoff Freq. (HPF)",
+  //     juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20.0f,
+  //     juce::AudioParameterFloatAttributes().withLabel("Hz"));
+  addParameter(&m_hpf_freq);
+  // m_hpf_res = new juce::AudioParameterFloat(
+  //     juce::ParameterID("hpf_res", 1), "Resonance (HPF)",
+  //     juce::NormalisableRange(0.1f, 10.0f), 0.71f,
+  //     juce::AudioParameterFloatAttributes().withLabel(""));
+  addParameter(&m_hpf_res);
+  // m_lpf_freq = new juce::AudioParameterFloat(
+  //     juce::ParameterID("lpf_freq", 1), "Cutoff Freq. (LPF)",
+  //     juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f,
+  //     juce::AudioParameterFloatAttributes().withLabel("Hz"));
+  addParameter(&m_lpf_freq);
+  // m_lpf_res = new juce::AudioParameterFloat(
+  //     juce::ParameterID("lpf_res", 1), "Resonance (LPF)",
+  //     juce::NormalisableRange(0.1f, 10.0f), 0.71f,
+  //     juce::AudioParameterFloatAttributes().withLabel(""));
+  addParameter(&m_lpf_res);
+  // m_attack_ms = new juce::AudioParameterFloat(
+  //     juce::ParameterID("attack", 1), "Attack (Env)",
+  //     juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 10.0f,
+  //     juce::AudioParameterFloatAttributes().withLabel("ms"));
+  addParameter(&m_attack_ms);
+  // m_decay_ms = new juce::AudioParameterFloat(
+  //     juce::ParameterID("decay", 1), "Decay (Env)",
+  //     juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
+  //     juce::AudioParameterFloatAttributes().withLabel("ms"));
+  addParameter(&m_decay_ms);
 
   m_processors.emplace_back(new NoiseGenerator(*this));
   // m_processors.emplace_back(new Synth(*this));
-  m_processors.emplace_back(new HighPassFilter(*this, m_hpf_freq, m_hpf_res));
-  m_processors.emplace_back(new LowPassFilter(*this, m_lpf_freq, m_lpf_res));
+  m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
+  m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
 }
 
@@ -93,35 +118,35 @@ void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
   // XML or ValueTree classes as intermediaries to make it easy to save and load
   // complex data.
   auto stream = juce::MemoryOutputStream(dest_data, true);
-  stream.writeFloat(m_hpf_freq->get());
-  stream.writeFloat(m_hpf_res->get());
-  stream.writeFloat(m_lpf_freq->get());
-  stream.writeFloat(m_lpf_res->get());
+  stream.writeFloat(m_hpf_freq);
+  stream.writeFloat(m_hpf_res);
+  stream.writeFloat(m_lpf_freq);
+  stream.writeFloat(m_lpf_res);
 }
 
 void GlynthProcessor::setStateInformation(const void* data, int size) {
   // Restore parameters from this memory block, whose contents will have been
   // created by the getStateInformation() call.
   auto stream = juce::MemoryInputStream(data, static_cast<size_t>(size), false);
-  *m_hpf_freq = stream.readFloat();
-  *m_hpf_res = stream.readFloat();
-  *m_lpf_freq = stream.readFloat();
-  *m_lpf_res = stream.readFloat();
+  m_hpf_freq = stream.readFloat();
+  m_hpf_res = stream.readFloat();
+  m_lpf_freq = stream.readFloat();
+  m_lpf_res = stream.readFloat();
 }
 
 void GlynthProcessor::timerCallback() { fflush(Logger::file); }
 
-juce::AudioParameterFloat* GlynthProcessor::getParamById(std::string_view id) {
-  auto params = {m_hpf_freq, m_hpf_res,   m_lpf_freq,
-                 m_lpf_res,  m_attack_ms, m_decay_ms};
+juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
+  auto params = {&m_hpf_freq, &m_hpf_res,   &m_lpf_freq,
+                 &m_lpf_res,  &m_attack_ms, &m_decay_ms};
   for (juce::AudioParameterFloat* param : params) {
     if (id == param->paramID.toStdString()) {
-      return param;
+      return *param;
     }
   }
   // Should be unreachable
-  fmt::println(Logger::file, R"(No parameter found with id "{}")", id);
-  return nullptr;
+  throw std::runtime_error(
+      fmt::format(R"(No parameter found with id "{}")", id));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
