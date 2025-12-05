@@ -47,7 +47,8 @@ void GlynthEditor::newOpenGLContextCreated() {
       std::make_unique<ParameterComponent>(*this, "param", "decay", fmt_ms),
   };
 
-  m_message_lock.enter();
+  juce::MessageManager::Lock lock;
+  lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
@@ -62,7 +63,7 @@ void GlynthEditor::newOpenGLContextCreated() {
     int y_offset = (h + 8) * (static_cast<int>(i) / ncols);
     params[i]->setBounds(x + x_offset, y + y_offset, w, h);
   }
-  m_message_lock.exit();
+  lock.exit();
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
@@ -349,7 +350,8 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
       m_label(editor_ref, "char", m_param.name.toStdString()) {
   m_number.setFontFace("SplineSansMono-Bold", 20);
   m_label.setFontFace("SplineSansMono-Medium", 10);
-  m_message_lock.enter();
+  juce::MessageManager::Lock lock;
+  lock.enter();
   addAndMakeVisible(m_knob);
   m_knob.setBounds(8, 8, 40, 40);
   addAndMakeVisible(m_number);
@@ -360,7 +362,7 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
   m_number.addMouseListener(this, true);
   m_knob.addMouseListener(this, true);
   m_label.addMouseListener(this, true);
-  m_message_lock.exit();
+  lock.exit();
 }
 
 void ParameterComponent::renderOpenGL() {
@@ -402,10 +404,11 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
   setMouseClickGrabsKeyboardFocus(true);
-  m_message_lock.enter();
+  juce::MessageManager::Lock lock;
+  lock.enter();
   // Listen to mouse events anywhere on the editor
   m_editor_ref.addMouseListener(this, true);
-  m_message_lock.exit();
+  lock.exit();
 }
 
 LissajousComponent::~LissajousComponent() {

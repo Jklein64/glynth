@@ -25,7 +25,6 @@ public:
 
 private:
   GlynthProcessor& m_processor_ref;
-  juce::MessageManager::Lock m_message_lock;
   juce::OpenGLContext m_context;
   ShaderManager m_shader_manager;
   FontManager m_font_manager;
@@ -152,7 +151,6 @@ private:
   NumberComponent m_number;
   KnobComponent m_knob;
   TextComponent m_label;
-  juce::MessageManager::Lock m_message_lock;
   glm::vec2 m_offset;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterComponent)
@@ -176,7 +174,6 @@ private:
 
   float getTimeUniform();
 
-  juce::MessageManager::Lock m_message_lock;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_last_focus_time;
   bool m_focused = false;
 
