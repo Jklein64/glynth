@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "processor.h"
 
+#include <chrono>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -29,8 +30,10 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("knob", "rect", "knob");
   m_shader_manager.addProgram("char", "rect", "char");
   m_shader_manager.addProgram("param", "rect", "param");
+  m_shader_manager.addProgram("lissajous", "rect", "lissajous");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
+  auto lissajous = std::make_unique<LissajousComponent>(*this, "lissajous");
   std::string_view fmt_hz = "{: >7.1f}{}";
   std::string_view fmt_q = "{: >9.6f}{}";
   std::string_view fmt_ms = "{: >8.2f}{}";
@@ -49,6 +52,8 @@ void GlynthEditor::newOpenGLContextCreated() {
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
+  addAndMakeVisible(lissajous.get());
+  lissajous->setBounds(66, 146, 708, 125);
   // Draw the grid of knobs
   int x = 128, y = 287, w = 184, h = 56, ncols = 3;
   for (size_t i = 0; i < params.size(); i++) {
@@ -61,6 +66,7 @@ void GlynthEditor::newOpenGLContextCreated() {
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
+  m_shader_components.push_back(std::move(lissajous));
   for (auto& param : params) {
     m_shader_components.push_back(std::move(param));
   }
@@ -388,4 +394,47 @@ static void setParameterToDefault(juce::AudioProcessorParameter& param) {
 void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
   // Set value back to default on double click anywhere on parameter component
   setParameterToDefault(m_param);
+}
+
+LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
+                                       const std::string& program_id)
+    : RectComponent(editor_ref, program_id) {
+  // Needed in order to capture keyboard events
+  setWantsKeyboardFocus(true);
+  setMouseClickGrabsKeyboardFocus(true);
+}
+
+void LissajousComponent::paint(juce::Graphics& g) {
+  g.setColour(juce::Colours::green);
+  g.drawRect(getLocalBounds());
+}
+
+bool LissajousComponent::hitTest(int x, int y) {
+  // Give away keyboard focus when the mouse is clicked outside the component,
+  // which is not default behavior (default is to transfer if it can)
+  if (RectComponent::hitTest(x, y)) {
+    return true;
+  } else {
+    giveAwayKeyboardFocus();
+    return false;
+  }
+}
+
+void LissajousComponent::focusGained(FocusChangeType) { m_focused = true; }
+void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
+
+bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
+  fmt::println("key pressed! '{}'", key.getTextDescription().toStdString());
+  auto key_char = key.getTextCharacter();
+  auto end = s_defocusing_keys.end();
+  if (std::find(s_defocusing_keys.begin(), end, key_char) != end) {
+    fmt::println("removing focus");
+    giveAwayKeyboardFocus();
+  }
+  // Restrict to non-command ASCII, plus DEL
+  else if (32 <= key_char && key_char <= 127) {
+    fmt::println("was ascii");
+  }
+  // The OS might interpret false here as "cannot type" and play an error noise
+  return true;
 }

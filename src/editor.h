@@ -121,6 +121,8 @@ private:
     glm::vec2 pos;
     glm::vec2 uv;
   };
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TextComponent)
 };
 
 class NumberComponent : public TextComponent {
@@ -154,4 +156,23 @@ private:
   glm::vec2 m_offset;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ParameterComponent)
+};
+
+class LissajousComponent : public RectComponent {
+public:
+  LissajousComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  void paint(juce::Graphics& g) override;
+  bool hitTest(int x, int y) override;
+  void focusGained(FocusChangeType cause) override;
+  void focusLost(FocusChangeType cause) override;
+  bool keyPressed(const juce::KeyPress& key) override;
+
+private:
+  static inline std::array s_defocusing_keys = {juce::KeyPress::returnKey,
+                                                juce::KeyPress::escapeKey,
+                                                juce::KeyPress::tabKey};
+
+  bool m_focused = false;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LissajousComponent)
 };
