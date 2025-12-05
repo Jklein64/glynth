@@ -9,19 +9,19 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
   startTimerHz(1);
 #endif
   m_hpf_freq = new juce::AudioParameterFloat(
-      juce::ParameterID("hpf_freq", 1), "High Cutoff",
+      juce::ParameterID("hpf_freq", 1), "Cutoff Freq. (HPF)",
       juce::NormalisableRange(20.0f, 20000.0f), 20.0f);
   addParameter(m_hpf_freq);
   m_hpf_res = new juce::AudioParameterFloat(
-      juce::ParameterID("hpf_res", 1), "Resonance",
+      juce::ParameterID("hpf_res", 1), "Resonance (LPF)",
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_hpf_res);
   m_lpf_freq = new juce::AudioParameterFloat(
-      juce::ParameterID("lpf_freq", 1), "Low Cutoff",
+      juce::ParameterID("lpf_freq", 1), "Cutoff Freq. (LPF)",
       juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f);
   addParameter(m_lpf_freq);
   m_lpf_res = new juce::AudioParameterFloat(
-      juce::ParameterID("lpf_res", 1), "Resonance",
+      juce::ParameterID("lpf_res", 1), "Resonance (HPF)",
       juce::NormalisableRange(0.1f, 10.0f), 0.71f);
   addParameter(m_lpf_res);
 

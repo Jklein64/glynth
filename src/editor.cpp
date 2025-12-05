@@ -40,21 +40,38 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("param", "rect", "param");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
-  auto parameter =
-      std::make_unique<ParameterComponent>(*this, "param", "lpf_freq");
+  std::array<std::unique_ptr<ParameterComponent>, 2> knobs = {
+      // Row-major order of grid of knobs
+      std::make_unique<ParameterComponent>(*this, "param", "lpf_freq"),
+      std::make_unique<ParameterComponent>(*this, "param", "hpf_freq"),
+      // std::make_unique<ParameterComponent>(*this, "param", "lpf_res"),
+      // std::make_unique<ParameterComponent>(*this, "param", "hpf_res"),
+  };
 
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
-  addAndMakeVisible(parameter.get());
-  parameter->setBounds(78 + 50, 237 + 50, 184, 56);
+  addAndMakeVisible(knobs[0].get());
+  addAndMakeVisible(knobs[1].get());
+  // Draw the grid of knobs, starting at 128, 287
+  int x = 128, y = 287, w = 184, h = 56;
+  knobs[0]->setBounds(x, y, w, h);
+  knobs[1]->setBounds(x + w + 16, y + h + 8, w, h);
+  // for (size_t i = 0; i < knobs.size(); i++) {
+  //   int x_offset = (w + 16) * static_cast<int>(i);
+  //   int y_offset = (y + 8) * static_cast<int>(i);
+  //   knobs[i]->setBounds(x + x_offset, y + y_offset, w, h);
+  // }
   m_message_lock.exit();
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(rect));
-  m_shader_components.push_back(std::move(parameter));
+  // m_shader_components.push_back(std::move(knobs[0]));
+  for (auto& knob : knobs) {
+    m_shader_components.push_back(std::move(knob));
+  }
 }
 
 void GlynthEditor::renderOpenGL() {
@@ -191,11 +208,11 @@ KnobComponent::KnobComponent(GlynthEditor& editor_ref,
 }
 
 void KnobComponent::renderOpenGL() {
-  RectComponent::renderOpenGL();
   // Uniforms can only be updated from the OpenGL thread
-  // useProgram() was already called by RectComponent::renderOpenGL()
   float value = m_range.convertTo0to1(m_param->get());
+  m_shader_manager.useProgram(m_program_id);
   m_shader_manager.setUniform(m_program_id, "u_value", value);
+  RectComponent::renderOpenGL();
 }
 
 void KnobComponent::mouseDown(const juce::MouseEvent& e) {
@@ -327,7 +344,8 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
     : RectComponent(editor_ref, program_id),
       m_number(editor_ref, "char", param_id),
       m_knob(editor_ref, "knob", param_id),
-      m_label(editor_ref, "char", "Cutoff Freq. (LPF)") {
+      m_label(editor_ref, "char",
+              m_processor_ref.getParamById(param_id)->name.toStdString()) {
   m_number.setFontFace("SplineSansMono-Bold", 20);
   m_label.setFontFace("SplineSansMono-Medium", 10);
   m_message_lock.enter();
