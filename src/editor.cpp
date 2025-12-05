@@ -32,7 +32,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
   std::string_view fmt_hz = "{: >7.1f}{}";
-  std::string_view fmt_q = "{: >8.6f}{}";
+  std::string_view fmt_q = "{: >9.6f}{}";
   std::array<std::unique_ptr<ParameterComponent>, 4> params = {
       // Row-major order of grid of knobs
       std::make_unique<ParameterComponent>(*this, "param", "lpf_freq", fmt_hz),
