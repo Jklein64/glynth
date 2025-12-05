@@ -439,13 +439,18 @@ void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
 bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
   auto key_char = key.getTextCharacter();
   auto end = s_defocusing_keys.end();
+  // After handling defocusers, restrict to non-command ASCII, and DEL
   if (std::find(s_defocusing_keys.begin(), end, key_char) != end) {
     giveAwayKeyboardFocus();
-  }
-  // Restrict to non-command ASCII, plus DEL
-  else if (32 <= key_char && key_char <= 127) {
-    fmt::println("ascii key pressed! '{}'",
-                 key.getTextDescription().toStdString());
+  } else if (32 <= key_char && key_char <= 127) {
+    if (key_char == juce::KeyPress::backspaceKey && m_content.size() > 0) {
+      // DEL pressed, delete a character if possible
+      m_content.pop_back();
+    } else {
+      // key_char is a non-command ASCII value
+      m_content += static_cast<char>(key_char);
+    }
+    onContentChanged();
   }
   // The OS might interpret false here as "cannot type" and play an error noise
   return true;
@@ -456,6 +461,11 @@ void LissajousComponent::renderOpenGL() {
   float value = getTimeUniform();
   m_shader_manager.setUniform(m_program_id, "u_time", value);
   RectComponent::renderOpenGL();
+}
+
+void LissajousComponent::onContentChanged() {
+  fmt::println(R"(m_content = "{}")", m_content);
+  fmt::println("TODO: regenerate outline");
 }
 
 float LissajousComponent::getTimeUniform() {

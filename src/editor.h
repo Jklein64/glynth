@@ -172,8 +172,10 @@ private:
                                                 juce::KeyPress::escapeKey,
                                                 juce::KeyPress::tabKey};
 
+  void onContentChanged();
   float getTimeUniform();
 
+  std::string m_content = "";
   std::chrono::time_point<std::chrono::high_resolution_clock> m_last_focus_time;
   bool m_focused = false;
 
