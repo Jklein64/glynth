@@ -126,11 +126,12 @@ private:
 class NumberComponent : public TextComponent {
 public:
   NumberComponent(GlynthEditor& editor_ref, const std::string& program_id,
-                  std::string_view param_id);
+                  std::string_view param_id, std::string_view format);
   void renderOpenGL() override;
 
 private:
   juce::AudioParameterFloat* m_param;
+  std::string m_format;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NumberComponent)
 };
@@ -138,7 +139,7 @@ private:
 class ParameterComponent : public RectComponent {
 public:
   ParameterComponent(GlynthEditor& editor_ref, const std::string& program_id,
-                     std::string_view param_id);
+                     std::string_view param_id, std::string_view format);
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;

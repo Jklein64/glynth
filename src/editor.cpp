@@ -40,12 +40,14 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("param", "rect", "param");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
+  std::string_view fmt_hz = "{: >7.1f}{}";
+  std::string_view fmt_q = "{: >8.6f}{}";
   std::array<std::unique_ptr<ParameterComponent>, 4> params = {
       // Row-major order of grid of knobs
-      std::make_unique<ParameterComponent>(*this, "param", "lpf_freq"),
-      std::make_unique<ParameterComponent>(*this, "param", "hpf_freq"),
-      std::make_unique<ParameterComponent>(*this, "param", "lpf_res"),
-      std::make_unique<ParameterComponent>(*this, "param", "hpf_res"),
+      std::make_unique<ParameterComponent>(*this, "param", "lpf_freq", fmt_hz),
+      std::make_unique<ParameterComponent>(*this, "param", "hpf_freq", fmt_hz),
+      std::make_unique<ParameterComponent>(*this, "param", "lpf_res", fmt_q),
+      std::make_unique<ParameterComponent>(*this, "param", "hpf_res", fmt_q),
   };
 
   m_message_lock.enter();
@@ -325,21 +327,24 @@ void TextComponent::setFontFace(std::string_view face_name,
 
 NumberComponent::NumberComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id,
-                                 std::string_view param_id)
-    : TextComponent(editor_ref, program_id, "0"),
-      m_param(m_processor_ref.getParamById(param_id)) {}
+                                 std::string_view param_id,
+                                 std::string_view format)
+    : TextComponent(editor_ref, program_id, ""),
+      m_param(m_processor_ref.getParamById(param_id)), m_format(format) {}
 
 void NumberComponent::renderOpenGL() {
-  m_text = fmt::format("{: >7.1f}Hz", m_param->get());
+  std::string suffix = m_param->getLabel().toStdString();
+  m_text = fmt::format(fmt::runtime(m_format), m_param->get(), suffix);
   TextComponent::renderOpenGL();
 }
 
 ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
-                                       std::string_view param_id)
+                                       std::string_view param_id,
+                                       std::string_view format)
     : RectComponent(editor_ref, program_id),
       m_param(m_processor_ref.getParamById(param_id)),
-      m_number(editor_ref, "char", param_id),
+      m_number(editor_ref, "char", param_id, format),
       m_knob(editor_ref, "knob", param_id),
       m_label(editor_ref, "char", m_param->name.toStdString()) {
   m_number.setFontFace("SplineSansMono-Bold", 20);
