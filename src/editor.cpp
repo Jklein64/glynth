@@ -33,12 +33,15 @@ void GlynthEditor::newOpenGLContextCreated() {
   auto rect = std::make_unique<RectComponent>(*this, "rect");
   std::string_view fmt_hz = "{: >7.1f}{}";
   std::string_view fmt_q = "{: >9.6f}{}";
-  std::array<std::unique_ptr<ParameterComponent>, 4> params = {
+  std::string_view fmt_ms = "{: >8.2f}{}";
+  std::array params = {
       // Row-major order of grid of knobs
       std::make_unique<ParameterComponent>(*this, "param", "lpf_freq", fmt_hz),
       std::make_unique<ParameterComponent>(*this, "param", "hpf_freq", fmt_hz),
+      std::make_unique<ParameterComponent>(*this, "param", "attack", fmt_ms),
       std::make_unique<ParameterComponent>(*this, "param", "lpf_res", fmt_q),
       std::make_unique<ParameterComponent>(*this, "param", "hpf_res", fmt_q),
+      std::make_unique<ParameterComponent>(*this, "param", "decay", fmt_ms),
   };
 
   m_message_lock.enter();
@@ -47,7 +50,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   addAndMakeVisible(rect.get());
   rect->setBounds(100, 100, 100, 100);
   // Draw the grid of knobs
-  int x = 128, y = 287, w = 184, h = 56, ncols = 2;
+  int x = 128, y = 287, w = 184, h = 56, ncols = 3;
   for (size_t i = 0; i < params.size(); i++) {
     addAndMakeVisible(params[i].get());
     int x_offset = (w + 16) * (static_cast<int>(i) % ncols);

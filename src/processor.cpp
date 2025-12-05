@@ -28,6 +28,18 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
       juce::NormalisableRange(0.1f, 10.0f), s_param_defaults[3],
       juce::AudioParameterFloatAttributes().withLabel(""));
   addParameter(m_lpf_res);
+  m_attack_ms = new juce::AudioParameterFloat(
+      juce::ParameterID("attack", 1), "Attack (Env)",
+      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f),
+      s_param_defaults[4],
+      juce::AudioParameterFloatAttributes().withLabel("ms"));
+  addParameter(m_attack_ms);
+  m_decay_ms = new juce::AudioParameterFloat(
+      juce::ParameterID("decay", 1), "Decay (Env)",
+      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f),
+      s_param_defaults[5],
+      juce::AudioParameterFloatAttributes().withLabel("ms"));
+  addParameter(m_decay_ms);
 
   m_processors.emplace_back(new NoiseGenerator(*this));
   // m_processors.emplace_back(new Synth(*this));
@@ -102,7 +114,8 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
 void GlynthProcessor::timerCallback() { fflush(Logger::file); }
 
 juce::AudioParameterFloat* GlynthProcessor::getParamById(std::string_view id) {
-  auto params = {m_hpf_freq, m_hpf_res, m_lpf_freq, m_lpf_res};
+  auto params = {m_hpf_freq, m_hpf_res,   m_lpf_freq,
+                 m_lpf_res,  m_attack_ms, m_decay_ms};
   for (juce::AudioParameterFloat* param : params) {
     if (id == param->paramID.toStdString()) {
       return param;

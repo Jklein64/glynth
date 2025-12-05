@@ -61,6 +61,8 @@ public:
       0.71f,    // Resonance (HPF)
       20000.0f, // Cutoff Freq. (LPF)
       0.71f,    // Resonance (LPF)
+      10.0f,    // Attack (Env)
+      100.0f,   // Decay (Env)
   };
 
 private:
@@ -71,6 +73,8 @@ private:
   juce::AudioParameterFloat* m_hpf_res;
   juce::AudioParameterFloat* m_lpf_freq;
   juce::AudioParameterFloat* m_lpf_res;
+  juce::AudioParameterFloat* m_attack_ms;
+  juce::AudioParameterFloat* m_decay_ms;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
