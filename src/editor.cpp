@@ -338,10 +338,10 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        std::string_view param_id)
     : RectComponent(editor_ref, program_id),
+      m_param(m_processor_ref.getParamById(param_id)),
       m_number(editor_ref, "char", param_id),
       m_knob(editor_ref, "knob", param_id),
-      m_label(editor_ref, "char",
-              m_processor_ref.getParamById(param_id)->name.toStdString()) {
+      m_label(editor_ref, "char", m_param->name.toStdString()) {
   m_number.setFontFace("SplineSansMono-Bold", 20);
   m_label.setFontFace("SplineSansMono-Medium", 10);
   m_message_lock.enter();
@@ -351,6 +351,10 @@ ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
   m_number.setBounds(56, 24, 112, 24);
   addAndMakeVisible(m_label);
   m_label.setBounds(56, 6, 108, 12);
+  // Listen for mouse events happening in child components
+  m_number.addMouseListener(this, true);
+  m_knob.addMouseListener(this, true);
+  m_label.addMouseListener(this, true);
   m_message_lock.exit();
 }
 
@@ -371,4 +375,10 @@ void ParameterComponent::resized() {
   m_knob.resized();
   m_number.resized();
   m_label.resized();
+}
+
+void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
+  // Set value back to default on double click anywhere on parameter component
+  size_t param_idx = static_cast<size_t>(m_param->getParameterIndex());
+  *m_param = m_processor_ref.s_param_defaults[param_idx];
 }

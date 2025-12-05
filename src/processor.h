@@ -20,14 +20,11 @@ protected:
   GlynthProcessor& m_processor_ref;
 };
 
-//==============================================================================
 class GlynthProcessor final : public juce::AudioProcessor, public juce::Timer {
 public:
-  //==============================================================================
   GlynthProcessor();
   ~GlynthProcessor() override;
 
-  //==============================================================================
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void releaseResources() override;
 
@@ -36,11 +33,9 @@ public:
   void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
   using AudioProcessor::processBlock;
 
-  //==============================================================================
   juce::AudioProcessorEditor* createEditor() override;
   inline bool hasEditor() const override { return true; }
 
-  //==============================================================================
   inline const juce::String getName() const override { return JucePlugin_Name; }
 
   inline bool acceptsMidi() const override { return true; }
@@ -48,14 +43,12 @@ public:
   inline bool isMidiEffect() const override { return false; }
   inline double getTailLengthSeconds() const override { return 0.0; }
 
-  //==============================================================================
   inline int getNumPrograms() override { return 1; }
   inline int getCurrentProgram() override { return 0; }
   inline void setCurrentProgram(int) override {}
   inline const juce::String getProgramName(int) override { return {}; }
   inline void changeProgramName(int, const juce::String&) override {}
 
-  //==============================================================================
   void getStateInformation(juce::MemoryBlock& dest_data) override;
   void setStateInformation(const void* data, int size) override;
 
@@ -63,8 +56,14 @@ public:
   // All parameters are float values
   juce::AudioParameterFloat* getParamById(std::string_view id);
 
+  constexpr inline static std::array s_param_defaults = {
+      20.0f,    // Cutoff Freq. (HPF)
+      0.71f,    // Resonance (HPF)
+      20000.0f, // Cutoff Freq. (LPF)
+      0.71f,    // Resonance (LPF)
+  };
+
 private:
-  //==============================================================================
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
 

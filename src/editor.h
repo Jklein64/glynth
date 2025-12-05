@@ -142,8 +142,10 @@ public:
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
+  void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
+  juce::AudioParameterFloat* m_param;
   NumberComponent m_number;
   KnobComponent m_knob;
   TextComponent m_label;
