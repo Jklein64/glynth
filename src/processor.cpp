@@ -10,34 +10,32 @@ GlynthProcessor::GlynthProcessor() : AudioProcessor(s_io_layouts) {
 #endif
   m_hpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_freq", 1), "Cutoff Freq. (HPF)",
-      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), s_param_defaults[0],
+      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20.0f,
       juce::AudioParameterFloatAttributes().withLabel("Hz"));
   addParameter(m_hpf_freq);
   m_hpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("hpf_res", 1), "Resonance (HPF)",
-      juce::NormalisableRange(0.1f, 10.0f), s_param_defaults[1],
+      juce::NormalisableRange(0.1f, 10.0f), 0.71f,
       juce::AudioParameterFloatAttributes().withLabel(""));
   addParameter(m_hpf_res);
   m_lpf_freq = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_freq", 1), "Cutoff Freq. (LPF)",
-      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), s_param_defaults[2],
+      juce::NormalisableRange(20.0f, 20000.0f, 0.1f, 0.2f), 20000.0f,
       juce::AudioParameterFloatAttributes().withLabel("Hz"));
   addParameter(m_lpf_freq);
   m_lpf_res = new juce::AudioParameterFloat(
       juce::ParameterID("lpf_res", 1), "Resonance (LPF)",
-      juce::NormalisableRange(0.1f, 10.0f), s_param_defaults[3],
+      juce::NormalisableRange(0.1f, 10.0f), 0.71f,
       juce::AudioParameterFloatAttributes().withLabel(""));
   addParameter(m_lpf_res);
   m_attack_ms = new juce::AudioParameterFloat(
       juce::ParameterID("attack", 1), "Attack (Env)",
-      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f),
-      s_param_defaults[4],
+      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 10.0f,
       juce::AudioParameterFloatAttributes().withLabel("ms"));
   addParameter(m_attack_ms);
   m_decay_ms = new juce::AudioParameterFloat(
       juce::ParameterID("decay", 1), "Decay (Env)",
-      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f),
-      s_param_defaults[5],
+      juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
       juce::AudioParameterFloatAttributes().withLabel("ms"));
   addParameter(m_decay_ms);
 

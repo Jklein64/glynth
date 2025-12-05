@@ -376,8 +376,16 @@ void ParameterComponent::resized() {
   m_label.resized();
 }
 
+// Wrapper function for getting parameter default. For some reason JUCE's
+// implementation of AudioParameterFloat::getDefaultValue declares it as
+// private, even though the base classes have this function as public.
+// Normally a static_cast would work, but all base classes with the function
+// declared publicly are abstract, so can't be casted to
+static void setParameterToDefault(juce::AudioProcessorParameter* param) {
+  param->setValueNotifyingHost(param->getDefaultValue());
+}
+
 void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
   // Set value back to default on double click anywhere on parameter component
-  size_t param_idx = static_cast<size_t>(m_param->getParameterIndex());
-  *m_param = m_processor_ref.s_param_defaults[param_idx];
+  setParameterToDefault(m_param);
 }

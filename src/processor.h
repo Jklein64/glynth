@@ -56,15 +56,6 @@ public:
   // All parameters are float values
   juce::AudioParameterFloat* getParamById(std::string_view id);
 
-  constexpr inline static std::array s_param_defaults = {
-      20.0f,    // Cutoff Freq. (HPF)
-      0.71f,    // Resonance (HPF)
-      20000.0f, // Cutoff Freq. (LPF)
-      0.71f,    // Resonance (LPF)
-      10.0f,    // Attack (Env)
-      100.0f,   // Decay (Env)
-  };
-
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
