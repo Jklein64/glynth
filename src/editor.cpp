@@ -22,15 +22,6 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_message_lock.enter();
-  // Get display scale, which is needed to render Freetype fonts correctly.
-  // Freetype doesn't distinguish between logical pixels and physical pixels,
-  // so creates bitmaps at half the desired resolution on high-dpi devices
-  auto& displays = juce::Desktop::getInstance().getDisplays();
-  auto* display = displays.getDisplayForRect(getScreenBounds());
-  m_font_manager.setDisplayScale(display->scale);
-  m_message_lock.exit();
-
   m_font_manager.addFace("SplineSansMono-Bold", 20);
   m_font_manager.addFace("SplineSansMono-Medium", 10);
   m_shader_manager.addProgram("bg", "ortho", "vt220");

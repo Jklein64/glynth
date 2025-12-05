@@ -16,6 +16,22 @@ FontManager::FontManager(juce::OpenGLContext& context) : m_context(context) {
   if (err = FT_Init_FreeType(&m_library); err != 0) {
     throw FreetypeError(FT_Error_String(err));
   }
+
+  // Get max display scale, which is needed to render Freetype fonts correctly.
+  // Freetype doesn't distinguish between logical pixels and physical pixels,
+  // so creates bitmaps at half the desired resolution on high-dpi devices.
+  // Iterating over all display rects gets the max scale for any display, since
+  // scale could differ significantly between computer monitors, for example
+  m_display_scale = std::numeric_limits<decltype(m_display_scale)>::min();
+  auto& displays = juce::Desktop::getInstance().getDisplays();
+  auto rectangle_list = displays.getRectangleList(true);
+  for (int i = 0; i < rectangle_list.getNumRectangles(); i++) {
+    auto rect = rectangle_list.getRectangle(i);
+    auto* display = displays.getDisplayForRect(rect);
+    if (display && display->scale > m_display_scale) {
+      m_display_scale = display->scale;
+    }
+  }
 }
 
 class FontManagerError : public std::runtime_error {
@@ -25,10 +41,6 @@ public:
 };
 
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
-
-void FontManager::setDisplayScale(double display_scale) {
-  m_display_scale = display_scale;
-}
 
 void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
   assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);
