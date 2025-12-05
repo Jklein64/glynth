@@ -402,39 +402,67 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
   setMouseClickGrabsKeyboardFocus(true);
+  m_message_lock.enter();
+  // Listen to mouse events anywhere on the editor
+  m_editor_ref.addMouseListener(this, true);
+  m_message_lock.exit();
+}
+
+LissajousComponent::~LissajousComponent() {
+  m_editor_ref.removeMouseListener(this);
 }
 
 void LissajousComponent::paint(juce::Graphics& g) {
-  g.setColour(juce::Colours::green);
+  g.setColour(juce::Colours::red);
   g.drawRect(getLocalBounds());
 }
 
-bool LissajousComponent::hitTest(int x, int y) {
-  // Give away keyboard focus when the mouse is clicked outside the component,
-  // which is not default behavior (default is to transfer if it can)
-  if (RectComponent::hitTest(x, y)) {
-    return true;
-  } else {
+void LissajousComponent::mouseDown(const juce::MouseEvent& e) {
+  auto e_local = e.getEventRelativeTo(this);
+  if (!contains(e_local.getMouseDownPosition())) {
+    // By default, clicking outside the component onto another component
+    // that doesn't want keyboard focus will not cause focus to change
     giveAwayKeyboardFocus();
-    return false;
   }
 }
 
-void LissajousComponent::focusGained(FocusChangeType) { m_focused = true; }
+void LissajousComponent::focusGained(FocusChangeType) {
+  m_focused = true;
+  m_last_focus_time = std::chrono::high_resolution_clock::now();
+}
+
 void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
 
 bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
-  fmt::println("key pressed! '{}'", key.getTextDescription().toStdString());
   auto key_char = key.getTextCharacter();
   auto end = s_defocusing_keys.end();
   if (std::find(s_defocusing_keys.begin(), end, key_char) != end) {
-    fmt::println("removing focus");
     giveAwayKeyboardFocus();
   }
   // Restrict to non-command ASCII, plus DEL
   else if (32 <= key_char && key_char <= 127) {
-    fmt::println("was ascii");
+    fmt::println("ascii key pressed! '{}'",
+                 key.getTextDescription().toStdString());
   }
   // The OS might interpret false here as "cannot type" and play an error noise
   return true;
+}
+
+void LissajousComponent::renderOpenGL() {
+  m_shader_manager.useProgram(m_program_id);
+  float value = getTimeUniform();
+  m_shader_manager.setUniform(m_program_id, "u_time", value);
+  RectComponent::renderOpenGL();
+}
+
+float LissajousComponent::getTimeUniform() {
+  if (m_focused) {
+    using namespace std::chrono;
+    // Get time since last focusing event
+    auto now = high_resolution_clock::now();
+    duration<float> elapsed = now - m_last_focus_time;
+    return elapsed.count();
+  } else {
+    return 0;
+  }
 }

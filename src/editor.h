@@ -161,17 +161,23 @@ private:
 class LissajousComponent : public RectComponent {
 public:
   LissajousComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  ~LissajousComponent() override;
   void paint(juce::Graphics& g) override;
-  bool hitTest(int x, int y) override;
+  void mouseDown(const juce::MouseEvent& e) override;
   void focusGained(FocusChangeType cause) override;
   void focusLost(FocusChangeType cause) override;
   bool keyPressed(const juce::KeyPress& key) override;
+  void renderOpenGL() override;
 
 private:
   static inline std::array s_defocusing_keys = {juce::KeyPress::returnKey,
                                                 juce::KeyPress::escapeKey,
                                                 juce::KeyPress::tabKey};
 
+  float getTimeUniform();
+
+  juce::MessageManager::Lock m_message_lock;
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_last_focus_time;
   bool m_focused = false;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LissajousComponent)
