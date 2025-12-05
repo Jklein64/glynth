@@ -97,8 +97,16 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
 
 void GlynthProcessor::timerCallback() { fflush(Logger::file); }
 
-juce::AudioParameterFloat* GlynthProcessor::getLowCutoffParam() {
-  return m_lpf_freq;
+juce::AudioParameterFloat* GlynthProcessor::getParamById(std::string_view id) {
+  auto params = {m_hpf_freq, m_hpf_res, m_lpf_freq, m_lpf_res};
+  for (juce::AudioParameterFloat* param : params) {
+    if (id == param->paramID.toStdString()) {
+      return param;
+    }
+  }
+  // Should be unreachable
+  fmt::println(Logger::file, R"(No parameter found with id "{}")", id);
+  return nullptr;
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

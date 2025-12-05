@@ -40,8 +40,8 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("param", "rect", "param");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto rect = std::make_unique<RectComponent>(*this, "rect");
-  auto parameter = std::make_unique<ParameterComponent>(
-      *this, "param", m_processor_ref.getLowCutoffParam());
+  auto parameter =
+      std::make_unique<ParameterComponent>(*this, "param", "lpf_freq");
 
   m_message_lock.enter();
   addAndMakeVisible(bg.get());
@@ -73,7 +73,8 @@ void GlynthEditor::openGLContextClosing() {}
 
 ShaderComponent::ShaderComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id)
-    : m_editor_ref(editor_ref), m_shader_manager(editor_ref.m_shader_manager),
+    : m_editor_ref(editor_ref), m_processor_ref(editor_ref.m_processor_ref),
+      m_shader_manager(editor_ref.m_shader_manager),
       m_font_manager(editor_ref.m_font_manager), m_program_id(program_id) {}
 
 BackgroundComponent::BackgroundComponent(GlynthEditor& editor_ref,
@@ -183,8 +184,9 @@ void RectComponent::resized() {
 
 KnobComponent::KnobComponent(GlynthEditor& editor_ref,
                              const std::string& program_id,
-                             juce::AudioParameterFloat* param)
-    : RectComponent(editor_ref, program_id), m_param(param) {
+                             std::string_view param_id)
+    : RectComponent(editor_ref, program_id),
+      m_param(m_processor_ref.getParamById(param_id)) {
   m_range = m_param->getNormalisableRange();
 }
 
@@ -310,8 +312,9 @@ void TextComponent::setFontFace(std::string_view face_name,
 
 NumberComponent::NumberComponent(GlynthEditor& editor_ref,
                                  const std::string& program_id,
-                                 juce::AudioParameterFloat* param)
-    : TextComponent(editor_ref, program_id, "0"), m_param(param) {}
+                                 std::string_view param_id)
+    : TextComponent(editor_ref, program_id, "0"),
+      m_param(m_processor_ref.getParamById(param_id)) {}
 
 void NumberComponent::renderOpenGL() {
   m_text = fmt::format("{: >7.1f}Hz", m_param->get());
@@ -320,9 +323,10 @@ void NumberComponent::renderOpenGL() {
 
 ParameterComponent::ParameterComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
-                                       juce::AudioParameterFloat* param)
+                                       std::string_view param_id)
     : RectComponent(editor_ref, program_id),
-      m_number(editor_ref, "char", param), m_knob(editor_ref, "knob", param),
+      m_number(editor_ref, "char", param_id),
+      m_knob(editor_ref, "knob", param_id),
       m_label(editor_ref, "char", "Cutoff Freq. (LPF)") {
   m_number.setFontFace("SplineSansMono-Bold", 20);
   m_label.setFontFace("SplineSansMono-Medium", 10);

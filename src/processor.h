@@ -60,7 +60,8 @@ public:
   void setStateInformation(const void* data, int size) override;
 
   void timerCallback() override;
-  juce::AudioParameterFloat* getLowCutoffParam();
+  // All parameters are float values
+  juce::AudioParameterFloat* getParamById(std::string_view id);
 
 private:
   //==============================================================================

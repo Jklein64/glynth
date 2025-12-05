@@ -43,6 +43,7 @@ public:
 
 protected:
   GlynthEditor& m_editor_ref;
+  GlynthProcessor& m_processor_ref;
   ShaderManager& m_shader_manager;
   FontManager& m_font_manager;
   // ID of the shader program associated with this component
@@ -84,7 +85,7 @@ private:
 class KnobComponent : public RectComponent {
 public:
   KnobComponent(GlynthEditor& editor_ref, const std::string& program_id,
-                juce::AudioParameterFloat* param);
+                std::string_view param_id);
   void renderOpenGL() override;
   void mouseDown(const juce::MouseEvent& e) override;
   void mouseDrag(const juce::MouseEvent& e) override;
@@ -125,7 +126,7 @@ private:
 class NumberComponent : public TextComponent {
 public:
   NumberComponent(GlynthEditor& editor_ref, const std::string& program_id,
-                  juce::AudioParameterFloat* param);
+                  std::string_view param_id);
   void renderOpenGL() override;
 
 private:
@@ -137,7 +138,7 @@ private:
 class ParameterComponent : public RectComponent {
 public:
   ParameterComponent(GlynthEditor& editor_ref, const std::string& program_id,
-                     juce::AudioParameterFloat* param);
+                     std::string_view param_id);
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
