@@ -2,6 +2,7 @@
 #include "error.h"
 
 #include <freetype/ftoutln.h>
+#include <juce_core/juce_core.h>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -61,7 +62,7 @@ Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3)
 }
 
 float Segment::length(float t) const {
-  if (t == 1) {
+  if (juce::exactlyEqual(t, 1.0f)) {
     return m_length;
   }
 
@@ -170,11 +171,11 @@ struct UserData {
   std::optional<FT_Vector> p0;
 };
 
-FT_Outline_Funcs funcs = (FT_Outline_Funcs){
+FT_Outline_Funcs funcs = {
     .move_to =
         [](const FT_Vector* to, void* user) {
           auto& u = *static_cast<UserData*>(user);
-          FT_Vector p0 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p0 = {to->x + u.pen.x, to->y + u.pen.y};
           u.segments.emplace_back(p0);
           u.p0 = p0;
           return 0;
@@ -182,7 +183,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
     .line_to =
         [](const FT_Vector* to, void* user) {
           auto& u = *static_cast<UserData*>(user);
-          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p1 = {to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
             u.segments.emplace_back(*u.p0, p1);
           }
@@ -192,9 +193,9 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
     .conic_to =
         [](const FT_Vector* c0, const FT_Vector* to, void* user) {
           auto& u = *static_cast<UserData*>(user);
-          FT_Vector p2 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p2 = {to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
+            FT_Vector p1 = {c0->x + u.pen.x, c0->y + u.pen.y};
             u.segments.emplace_back(*u.p0, p1, p2);
           }
           u.p0 = p2;
@@ -204,15 +205,17 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
         [](const FT_Vector* c0, const FT_Vector* c1, const FT_Vector* to,
            void* user) {
           auto& u = *static_cast<UserData*>(user);
-          FT_Vector p3 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          FT_Vector p3 = {to->x + u.pen.x, to->y + u.pen.y};
           if (u.p0.has_value()) {
-            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-            FT_Vector p2 = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
+            FT_Vector p1 = {c0->x + u.pen.x, c0->y + u.pen.y};
+            FT_Vector p2 = {c1->x + u.pen.x, c1->y + u.pen.y};
             u.segments.emplace_back(*u.p0, p1, p2, p3);
           }
           u.p0 = p3;
           return 0;
         },
+    .shift = 0,
+    .delta = 0,
 };
 
 Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
@@ -231,7 +234,8 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
   }
 
   for (size_t i = 0; i < text.size(); i++) {
-    if ((err = FT_Load_Char(face, text[i], FT_LOAD_DEFAULT))) {
+    FT_ULong char_code = static_cast<FT_ULong>(text[i]);
+    if ((err = FT_Load_Char(face, char_code, FT_LOAD_DEFAULT))) {
       throw FreetypeError(FT_Error_String(err));
     }
 
@@ -267,17 +271,19 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
   m_parameters.resize(m_num_param_samples);
   m_distances.resize(m_num_param_samples, 0.0f);
   for (size_t i = 0; i < m_num_param_samples; i++) {
-    m_parameters[i] = static_cast<float>(i) / (m_num_param_samples - 1);
+    float i_float = static_cast<float>(i);
+    m_parameters[i] = i_float / static_cast<float>(m_num_param_samples - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
-    float j_decimal = m_parameters[i] * m_segments.size();
+    float j_decimal = m_parameters[i] * static_cast<float>(m_segments.size());
     size_t j = static_cast<size_t>(j_decimal);
     // Add length of all segments coming before segment j
     for (size_t k = 0; k < j; k++) {
       m_distances[i] += m_segments[k].length();
     }
     // Add length of the part of segment j included by parameter
-    m_distances[i] += m_segments[j].length(j_decimal - j);
+    float j_whole = static_cast<float>(j);
+    m_distances[i] += m_segments[j].length(j_decimal - j_whole);
   }
 }
 
@@ -289,7 +295,7 @@ std::vector<glm::vec2> Outline::sample(size_t n) const {
   std::vector<glm::vec2> samples(n);
   std::vector<float> ts(n);
   for (size_t i = 0; i < n; i++) {
-    float t = static_cast<float>(i) / (n - 1);
+    float t = static_cast<float>(i) / static_cast<float>(n - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     ts[i] = std::clamp(t, 0.0f, std::nextafterf(1.0f, 0.0f));
   }
@@ -317,9 +323,11 @@ std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {
       }
     }
     // Do the naive sampling with t = parameters[j_best]
-    float j_decimal = m_parameters[j_best] * m_segments.size();
+    float j_decimal =
+        m_parameters[j_best] * static_cast<float>(m_segments.size());
     size_t j = static_cast<size_t>(j_decimal);
-    samples[i] = m_segments[j].sample(j_decimal - j);
+    float j_whole = static_cast<float>(j);
+    samples[i] = m_segments[j].sample(j_decimal - j_whole);
   }
   return samples;
 }
