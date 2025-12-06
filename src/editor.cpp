@@ -455,7 +455,7 @@ void LissajousComponent::mouseDown(const juce::MouseEvent& e) {
 
 void LissajousComponent::focusGained(FocusChangeType) {
   m_focused = true;
-  m_last_focus_time = std::chrono::high_resolution_clock::now();
+  m_last_change_time = std::chrono::high_resolution_clock::now();
 }
 
 void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
@@ -547,19 +547,14 @@ void LissajousComponent::onContentChanged() {
       throw FreetypeError(FT_Error_String(err));
     }
     auto& glyph = *m_face->glyph;
-    fmt::println("w_outline = {}, h_outline = {}", w_outline, h_outline);
     float scale = h_outline / h_face;
-    float advance = scale * static_cast<float>(glyph.metrics.horiAdvance) / 64;
-    float bearing = scale * static_cast<float>(glyph.metrics.horiBearingX) / 64;
     float width = scale * static_cast<float>(glyph.metrics.width) / 64;
-    fmt::println("advance = {}, bearing = {}, width = {}", advance, bearing,
-                 width);
     m_outline_glyph_size.x = width;
     m_outline_glyph_size.y = h_outline;
     m_outline_glyph_corner.x = w_outline + offset_x - width;
-    // m_outline_glyph_corner.y =
-    //     (1 - (bbox.max.y - descender) / h_face) * h_outline;
-    m_outline_glyph_corner.y = 0;
+    m_outline_glyph_corner.y = offset_y;
+    // Stay solid during changes and only start blinking afterward
+    m_last_change_time = std::chrono::high_resolution_clock::now();
   }
   m_dirty = true;
 }
@@ -569,9 +564,9 @@ float LissajousComponent::getTimeUniform() {
     using namespace std::chrono;
     // Get time since last focusing event
     auto now = high_resolution_clock::now();
-    duration<float> elapsed = now - m_last_focus_time;
+    duration<float> elapsed = now - m_last_change_time;
     return elapsed.count();
   } else {
-    return 0;
+    return -1;
   }
 }

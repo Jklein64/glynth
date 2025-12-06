@@ -191,7 +191,8 @@ private:
   // Dirty flag since texture cannot be updated in the callback thread
   std::atomic<bool> m_dirty = false;
   // For focus cursor blinking
-  std::chrono::time_point<std::chrono::high_resolution_clock> m_last_focus_time;
+  std::chrono::time_point<std::chrono::high_resolution_clock>
+      m_last_change_time;
   bool m_focused = false;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LissajousComponent)
