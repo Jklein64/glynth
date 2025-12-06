@@ -318,67 +318,12 @@ glm::vec2 Outline::sample(float t) const {
   return m_segments[j].sample(j_decimal - j);
 }
 
-// Outliner
-Outliner::Outliner(FT_Library library, FT_Face face)
-    : m_library(library), m_face(face) {}
-
 std::string Outline::svg_str() const {
   std::stringstream ss;
   for (auto&& segment : m_segments) {
     ss << segment.svg_str() << " ";
   }
   return ss.str();
-}
-
-Outline Outliner::outline(std::string_view text, uint32_t pixel_height) {
-  FT_Error error = FT_Set_Pixel_Sizes(m_face, 0, pixel_height);
-  if (error) {
-    throw FreetypeError(FT_Error_String(error));
-  }
-
-  std::vector<Segment> segments;
-  FT_Vector pen{.x = 0, .y = 0};
-  BoundingBox bbox;
-  UserData user = {
-      .pen = pen,
-      .segments = segments,
-      .p0 = std::nullopt,
-  };
-
-  for (size_t i = 0; i < text.size(); i++) {
-    FT_Error error = FT_Load_Char(m_face, text[i], FT_LOAD_DEFAULT);
-    FT_GlyphSlot glyph = m_face->glyph;
-    if (glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
-      fmt::println(stderr, "Glyph was not an outline");
-      exit(1);
-    }
-
-    error = FT_Outline_Decompose(&glyph->outline, &funcs, &user);
-    if (error) {
-      fmt::println(stderr, "Failed to decompose outline");
-      exit(1);
-    }
-
-    FT_BBox cbox;
-    FT_Outline_Get_CBox(&glyph->outline, &cbox);
-    cbox.xMin += pen.x;
-    cbox.xMax += pen.x;
-    cbox.yMin += pen.y;
-    cbox.yMax += pen.y;
-    bbox.expand(BoundingBox(cbox));
-    pen.x += glyph->advance.x;
-    pen.y += glyph->advance.y;
-  }
-
-  // Flip vertically so origin is in top right
-  for (auto&& segment : segments) {
-    for (auto&& point : segment.m_points) {
-      point.y = bbox.max.y - (point.y - bbox.min.y);
-    }
-  }
-
-  // This is actually the cbox, which might be larger than the tight bbox
-  return Outline(std::move(segments), bbox);
 }
 
 } // namespace glynth

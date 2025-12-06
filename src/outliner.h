@@ -55,14 +55,4 @@ private:
   std::vector<float> m_distances;
 };
 
-class Outliner {
-public:
-  Outliner(FT_Library library, FT_Face face);
-  Outline outline(std::string_view text, uint32_t pixel_height);
-
-private:
-  FT_Library m_library;
-  FT_Face m_face;
-};
-
 } // namespace glynth
