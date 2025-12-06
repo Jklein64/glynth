@@ -486,9 +486,9 @@ void LissajousComponent::renderOpenGL() {
     if (m_outline == nullptr) {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
-      glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
-                   static_cast<GLsizei>(m_samples.size()), 0, GL_RG, GL_FLOAT,
-                   m_samples.data());
+      glTexSubImage1D(GL_TEXTURE_1D, 0, 0,
+                      static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
+                      m_samples.data());
     }
     m_dirty = false;
   }
