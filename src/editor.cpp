@@ -462,22 +462,32 @@ void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
 
 bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
   auto key_char = key.getTextCharacter();
+  bool should_delete = key.getTextDescription() == "command + backspace" ||
+                       (key.getModifiers().isCommandDown() &&
+                        (key_char == juce::KeyPress::backspaceKey ||
+                         key_char == juce::KeyPress::deleteKey));
   auto end = s_defocusing_keys.end();
   // After handling defocusers, restrict to non-command ASCII, and DEL
   if (std::find(s_defocusing_keys.begin(), end, key_char) != end) {
     giveAwayKeyboardFocus();
-  } else if (32 <= key_char && key_char <= 127) {
+  }
+
+  else if (should_delete) {
+    // Hack for MacOS since "command + backspace" sets key_char to zero...
+    m_content = "";
+    onContentChanged();
+  }
+
+  else if (32 <= key_char && key_char <= 127) {
+    // key_char is a non-command ASCII value
     if (key_char == juce::KeyPress::backspaceKey) {
       if (m_content.size() > 0) {
-        // DEL pressed, delete a character if possible
         m_content.pop_back();
-        onContentChanged();
       }
     } else {
-      // key_char is a non-command ASCII value
       m_content += static_cast<char>(key_char);
-      onContentChanged();
     }
+    onContentChanged();
   }
   // The OS might interpret false here as "cannot type" and play an error noise
   return true;
@@ -505,11 +515,11 @@ void LissajousComponent::renderOpenGL() {
                         GL_RG, GL_FLOAT, zeros.data());
       }
       m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
-      m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
-                                  m_outline_glyph_corner);
-      m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",
-                                  m_outline_glyph_size);
     }
+    m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
+                                m_outline_glyph_corner);
+    m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",
+                                m_outline_glyph_size);
     m_dirty = false;
   }
   RectComponent::renderOpenGL();
@@ -521,13 +531,13 @@ void LissajousComponent::onContentChanged() {
                       ? new Outline(m_content, m_face, s_pixel_height)
                       : nullptr);
   // TODO send outline to processor, for more sampling and wavetable building
+  auto bounds = getBounds();
+  auto w_bounds = static_cast<float>(bounds.getWidth());
+  auto h_bounds = static_cast<float>(bounds.getHeight());
+  float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
   if (m_outline) {
     m_samples = m_outline->sample(s_num_outline_samples);
-    auto bounds = getBounds();
-    auto w_bounds = static_cast<float>(bounds.getWidth());
-    auto h_bounds = static_cast<float>(bounds.getHeight());
     auto& bbox = m_outline->bbox();
-    float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
     float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
     float w_outline = h_bounds / h_face * bbox.width();
     float h_outline = h_bounds;
@@ -550,13 +560,6 @@ void LissajousComponent::onContentChanged() {
     }
     // Get glyph dimensions for last character in outline
     auto char_code = static_cast<FT_ULong>(m_content.back());
-    // fmt::println("char code is {}", char_code);
-    // if (char_code == 32) {
-    //   fmt::println("replacing!");
-    //   // Hack for making spaces seem slightly more reasonable, replace with
-    //   // 'x'
-    //   char_code = static_cast<FT_ULong>('x');
-    // }
     if (auto err = FT_Load_Char(m_face, char_code, FT_LOAD_DEFAULT)) {
       throw FreetypeError(FT_Error_String(err));
     }
@@ -567,9 +570,21 @@ void LissajousComponent::onContentChanged() {
     m_outline_glyph_size.y = h_outline;
     m_outline_glyph_corner.x = w_outline + offset_x - width;
     m_outline_glyph_corner.y = offset_y;
-    // Stay solid during changes and only start blinking afterward
-    m_last_change_time = std::chrono::high_resolution_clock::now();
+  } else {
+    // Use the width of 'x' when there is no character to show
+    if (auto err = FT_Load_Char(m_face, 'x', FT_LOAD_DEFAULT)) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+    float scale = h_bounds / h_face;
+    auto& glyph = *m_face->glyph;
+    float width = scale * static_cast<float>(glyph.metrics.width) / 64;
+    m_outline_glyph_size.x = width;
+    m_outline_glyph_size.y = h_bounds;
+    m_outline_glyph_corner.x = (w_bounds - width) / 2;
+    m_outline_glyph_corner.y = 0;
   }
+  // Stay solid during changes and only start blinking afterward
+  m_last_change_time = std::chrono::high_resolution_clock::now();
   m_dirty = true;
 }
 
