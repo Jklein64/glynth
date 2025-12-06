@@ -548,16 +548,17 @@ void LissajousComponent::onContentChanged() {
     }
     auto& glyph = *m_face->glyph;
     fmt::println("w_outline = {}, h_outline = {}", w_outline, h_outline);
-    float advance = static_cast<float>(glyph.metrics.horiAdvance) / 64;
-    float bearing = static_cast<float>(glyph.metrics.horiBearingX) / 64;
-    float width = static_cast<float>(glyph.metrics.width) / 64;
-    float aspect = advance / h_face;
-    m_outline_glyph_size.x = aspect * h_outline;
+    float scale = h_outline / h_face;
+    float advance = scale * static_cast<float>(glyph.metrics.horiAdvance) / 64;
+    float bearing = scale * static_cast<float>(glyph.metrics.horiBearingX) / 64;
+    float width = scale * static_cast<float>(glyph.metrics.width) / 64;
+    fmt::println("advance = {}, bearing = {}, width = {}", advance, bearing,
+                 width);
+    // float aspect = advance / h_face;
+    // m_outline_glyph_size.x = aspect * h_outline;
+    m_outline_glyph_size.x = advance;
     m_outline_glyph_size.y = h_outline;
-    fmt::println("glyph size: {}, {}", aspect * h_outline, h_outline);
-    fmt::println("bearing = {}", bearing);
-    float aspect_w = (width + bearing) / h_face;
-    m_outline_glyph_corner.x = w_outline + offset_x - (aspect_w * h_outline);
+    m_outline_glyph_corner.x = w_outline + offset_x - (width + bearing);
     // m_outline_glyph_corner.y =
     //     (1 - (bbox.max.y - descender) / h_face) * h_outline;
     m_outline_glyph_corner.y = 0;
