@@ -111,7 +111,9 @@ target_compile_definitions(
 
 target_link_libraries(
     glynth
-    PRIVATE shaders fonts ${Gperftools_LIBRARIES}
+    PRIVATE shaders fonts
+    # Fails to link when not standalone
+    # ${Gperftools_LIBRARIES}
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

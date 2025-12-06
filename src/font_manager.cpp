@@ -1,15 +1,10 @@
 
 #include "font_manager.h"
+#include "error.h"
 #include "fonts.h"
 
 #include <fmt/format.h>
 #include <regex>
-
-class FreetypeError : public std::runtime_error {
-public:
-  explicit FreetypeError(const std::string& msg) : std::runtime_error(msg) {}
-  explicit FreetypeError(char* msg) : std::runtime_error(msg) {}
-};
 
 FontManager::FontManager(juce::OpenGLContext& context) : m_context(context) {
   FT_Error err;
@@ -42,23 +37,27 @@ public:
 
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
 
-void FontManager::addFace(std::string_view face_name, FT_UInt pixel_height) {
-  assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);
+void FontManager::addFace(std::string_view face_name) {
   // Load from binary data; assumes face_name is the non-extension filename
   std::string resource_name = std::string(face_name) + "_ttf";
   resource_name = std::regex_replace(resource_name, std::regex("-"), "");
-  FT_Face face;
   int file_size;
   auto file_base = fonts::getNamedResource(resource_name.c_str(), file_size);
   if (file_base == nullptr) {
     throw FontManagerError(
         fmt::format(R"(No resource with name "{}")", resource_name));
   }
-  if (auto err = FT_New_Memory_Face(m_library,
-                                    reinterpret_cast<const FT_Byte*>(file_base),
-                                    file_size, 0, &face)) {
+  if (auto err = FT_New_Memory_Face(
+          m_library, reinterpret_cast<const FT_Byte*>(file_base), file_size, 0,
+          &m_faces[std::string(face_name)])) {
     throw FreetypeError(FT_Error_String(err));
   }
+}
+
+void FontManager::buildBitmaps(std::string_view face_name,
+                               FT_UInt pixel_height) {
+  assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);
+  auto& face = m_faces.at(std::string(face_name));
   // Render face to bitmaps. Interpret height in logical pixels
   auto& charmap =
       m_character_maps[std::make_pair(std::string(face_name), pixel_height)];

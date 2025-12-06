@@ -1,5 +1,6 @@
 #include "processor.h"
 #include "editor.h"
+#include "error.h"
 #include "logger.h"
 
 #include <fmt/format.h>
@@ -145,8 +146,7 @@ juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
     }
   }
   // Should be unreachable
-  throw std::runtime_error(
-      fmt::format(R"(No parameter found with id "{}")", id));
+  throw GlynthError(fmt::format(R"(No parameter found with id "{}")", id));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

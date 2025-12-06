@@ -23,8 +23,10 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_font_manager.addFace("SplineSansMono-Bold", 20);
-  m_font_manager.addFace("SplineSansMono-Medium", 10);
+  m_font_manager.addFace("SplineSansMono-Bold");
+  m_font_manager.addFace("SplineSansMono-Medium");
+  m_font_manager.buildBitmaps("SplineSansMono-Bold", 20);
+  m_font_manager.buildBitmaps("SplineSansMono-Medium", 10);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
   m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");

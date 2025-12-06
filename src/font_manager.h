@@ -18,7 +18,8 @@ public:
 
   FontManager(juce::OpenGLContext& context);
   ~FontManager();
-  void addFace(std::string_view face_name, FT_UInt pixel_height);
+  void addFace(std::string_view face_name);
+  void buildBitmaps(std::string_view face_name, FT_UInt pixel_height);
   const Character& getCharacter(std::string_view face_name, char character,
                                 FT_UInt pixel_height);
 
@@ -37,6 +38,7 @@ private:
 
   juce::OpenGLContext& m_context;
   FT_Library m_library;
+  std::unordered_map<std::string, FT_Face> m_faces;
   // Maps the pair (face_name, pixel_height) -> charmap
   std::unordered_map<std::pair<std::string, FT_UInt>,
                      std::array<Character, 128>, pair_hash>
