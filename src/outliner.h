@@ -42,6 +42,7 @@ public:
   const std::vector<Segment>& segments() const;
   const BoundingBox& bbox() const;
   std::vector<glm::vec2> sample(size_t n) const;
+  // Note: expects the parameter values to be increasing
   std::vector<glm::vec2> sample(std::span<float> t) const;
   std::string svg_str() const;
 
