@@ -183,6 +183,10 @@ private:
   // Null when the outline shouldn't be displayed
   std::unique_ptr<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
+  // Bottom left corner of the last glyph
+  glm::vec2 m_outline_glyph_corner;
+  // Width and height of the last glyph
+  glm::vec2 m_outline_glyph_size;
   GLuint m_texture;
   // Dirty flag since texture cannot be updated in the callback thread
   std::atomic<bool> m_dirty = false;

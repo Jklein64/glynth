@@ -1,4 +1,5 @@
 #include "editor.h"
+#include "error.h"
 #include "processor.h"
 
 #include <chrono>
@@ -428,6 +429,10 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   using namespace juce::gl;
   m_shader_manager.useProgram(m_program_id);
   m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
+  m_shader_manager.setUniform(m_program_id, "u_outline_corner",
+                              m_outline_glyph_corner);
+  m_shader_manager.setUniform(m_program_id, "u_outline_face_size",
+                              m_outline_glyph_size);
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -489,10 +494,14 @@ void LissajousComponent::renderOpenGL() {
     if (m_outline == nullptr) {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
-      m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
       glTexSubImage1D(GL_TEXTURE_1D, 0, 0,
                       static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
                       m_samples.data());
+      m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
+      m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
+                                  m_outline_glyph_corner);
+      m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",
+                                  m_outline_glyph_size);
     }
     m_dirty = false;
   }
@@ -532,6 +541,26 @@ void LissajousComponent::onContentChanged() {
       sample.x = sample.x * w_outline + offset_x;
       sample.y = sample.y * h_outline + offset_y;
     }
+    // Get glyph dimensions for last character in outline
+    auto char_code = static_cast<FT_ULong>(m_content.back());
+    if (auto err = FT_Load_Char(m_face, char_code, FT_LOAD_DEFAULT)) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+    auto& glyph = *m_face->glyph;
+    fmt::println("w_outline = {}, h_outline = {}", w_outline, h_outline);
+    float advance = static_cast<float>(glyph.metrics.horiAdvance) / 64;
+    float bearing = static_cast<float>(glyph.metrics.horiBearingX) / 64;
+    float width = static_cast<float>(glyph.metrics.width) / 64;
+    float aspect = advance / h_face;
+    m_outline_glyph_size.x = aspect * h_outline;
+    m_outline_glyph_size.y = h_outline;
+    fmt::println("glyph size: {}, {}", aspect * h_outline, h_outline);
+    fmt::println("bearing = {}", bearing);
+    float aspect_w = (width + bearing) / h_face;
+    m_outline_glyph_corner.x = w_outline + offset_x - (aspect_w * h_outline);
+    // m_outline_glyph_corner.y =
+    //     (1 - (bbox.max.y - descender) / h_face) * h_outline;
+    m_outline_glyph_corner.y = 0;
   }
   m_dirty = true;
 }
