@@ -117,6 +117,12 @@ glm::vec2 Segment::sample(float t) const {
   }
 }
 
+void Segment::flip(float y_min, float y_max) {
+  for (auto& point : m_points) {
+    point.y = y_max - (point.y - y_min);
+  }
+}
+
 std::string Segment::svg_str() const {
   auto& p0 = m_points[0];
   if (m_order == 0) {
@@ -210,7 +216,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
 };
 
 Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
-                 size_t num_param_samples)
+                 bool invert_y, size_t num_param_samples)
     : m_num_param_samples(num_param_samples) {
   FT_Error err;
   FT_Vector pen{.x = 0, .y = 0};
@@ -246,10 +252,10 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
     pen.y += glyph->advance.y;
   }
 
-  // Flip vertically so origin is in top right
-  for (auto&& segment : m_segments) {
-    for (auto&& point : segment.m_points) {
-      point.y = m_bbox.max.y - (point.y - m_bbox.min.y);
+  if (invert_y) {
+    // Flip vertically so origin is in top right
+    for (auto&& segment : m_segments) {
+      segment.flip(m_bbox.min.y, m_bbox.max.y);
     }
   }
 

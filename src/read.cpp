@@ -28,7 +28,7 @@ int main() {
     throw FreetypeError(FT_Error_String(err));
   }
 
-  Outline outline("Glynth", face, 16);
+  Outline outline("Glynth", face, 16, true);
   // Save to svg file for preview
   std::ofstream svg_file("./out/outline.svg");
   auto bbox = outline.bbox();
