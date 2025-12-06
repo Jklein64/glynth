@@ -159,7 +159,8 @@ private:
 
 class LissajousComponent : public RectComponent {
 public:
-  LissajousComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  LissajousComponent(GlynthEditor& editor_ref, const std::string& program_id,
+                     size_t m_num_samples = 512);
   ~LissajousComponent() override;
   void paint(juce::Graphics& g) override;
   void mouseDown(const juce::MouseEvent& e) override;
@@ -173,7 +174,6 @@ private:
                                                 juce::KeyPress::escapeKey,
                                                 juce::KeyPress::tabKey};
   static constexpr FT_UInt s_pixel_height = 20;
-  static constexpr size_t s_num_outline_samples = 512;
 
   void onContentChanged();
   float getTimeUniform();
@@ -183,6 +183,7 @@ private:
   // Null when the outline shouldn't be displayed
   std::unique_ptr<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
+  size_t m_num_samples;
   // Bottom left corner of the last glyph
   glm::vec2 m_outline_glyph_corner;
   // Width and height of the last glyph

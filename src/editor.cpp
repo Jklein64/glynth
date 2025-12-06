@@ -402,10 +402,11 @@ void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
 }
 
 LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
-                                       const std::string& program_id)
-    : RectComponent(editor_ref, program_id) {
+                                       const std::string& program_id,
+                                       size_t num_samples)
+    : RectComponent(editor_ref, program_id), m_num_samples(num_samples) {
   m_face = m_font_manager.getFace("SplineSansMono-Medium");
-  m_samples.resize(s_num_outline_samples);
+  m_samples.resize(m_num_samples);
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
   setMouseClickGrabsKeyboardFocus(true);
@@ -510,7 +511,7 @@ void LissajousComponent::renderOpenGL() {
                         static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
                         m_samples.data());
       } else {
-        std::vector<glm::vec2> zeros(s_num_outline_samples);
+        std::vector<glm::vec2> zeros(m_num_samples);
         glTexSubImage1D(GL_TEXTURE_1D, 0, 0, static_cast<GLsizei>(zeros.size()),
                         GL_RG, GL_FLOAT, zeros.data());
       }
@@ -536,7 +537,7 @@ void LissajousComponent::onContentChanged() {
   auto h_bounds = static_cast<float>(bounds.getHeight());
   float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
   if (m_outline) {
-    m_samples = m_outline->sample(s_num_outline_samples);
+    m_samples = m_outline->sample(m_num_samples);
     auto& bbox = m_outline->bbox();
     float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
     float w_outline = h_bounds / h_face * bbox.width();
