@@ -134,6 +134,8 @@ target_link_libraries_system(
 
 add_executable(read src/read.cpp src/outliner.cpp)
 target_compile_features(read PRIVATE cxx_std_20)
+target_compile_options(read PRIVATE -fsanitize=address)
+target_link_options(read PRIVATE -fsanitize=address)
 target_link_libraries(
     read
     PRIVATE freetype fonts fmt::fmt glm::glm npy::npy ${Gperftools_LIBRARIES}
