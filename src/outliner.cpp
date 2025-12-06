@@ -277,7 +277,7 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
   }
 }
 
-const std::vector<Segment>& Outline::segments() const { return m_segments; }
+const std::span<const Segment> Outline::segments() const { return m_segments; }
 
 const BoundingBox& Outline::bbox() const { return m_bbox; }
 

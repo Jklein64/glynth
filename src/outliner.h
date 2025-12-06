@@ -36,8 +36,7 @@ class Outline {
 public:
   Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
           bool invert_y = false, size_t arc_length_samples = 10000);
-  Outline(std::vector<Segment>&& segments, BoundingBox bbox);
-  const std::vector<Segment>& segments() const;
+  const std::span<const Segment> segments() const;
   const BoundingBox& bbox() const;
   std::vector<glm::vec2> sample(size_t n) const;
   // Note: expects the parameter values to be increasing
