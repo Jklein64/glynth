@@ -226,6 +226,10 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
       .p0 = std::nullopt,
   };
 
+  if ((err = FT_Set_Pixel_Sizes(face, 0, pixel_height))) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+
   for (size_t i = 0; i < text.size(); i++) {
     if ((err = FT_Load_Char(face, text[i], FT_LOAD_DEFAULT))) {
       throw FreetypeError(FT_Error_String(err));
