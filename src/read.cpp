@@ -46,9 +46,9 @@ int main() {
     float t = static_cast<float>(i) / (points.shape(0) - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     t = std::clamp(t, 0.0f, std::nextafterf(1.0f, 0.0f));
-    glm::vec2 point = outline.sample(t);
-    points(i, 0) = point.x;
-    points(i, 1) = point.y;
+    std::vector<glm::vec2> point = outline.sample(std::span{&t, 1});
+    points(i, 0) = point[0].x;
+    points(i, 1) = point[0].y;
   }
   npy::save("./out/outline.npy", points);
 }
