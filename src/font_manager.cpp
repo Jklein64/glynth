@@ -80,8 +80,6 @@ void FontManager::buildBitmaps(std::string_view face_name,
     c.advance /= static_cast<float>(m_display_scale);
     charmap[i] = std::move(c);
   }
-  // Cleanup
-  FT_Done_Face(face);
 }
 
 const FontManager::Character&
