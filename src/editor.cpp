@@ -554,11 +554,9 @@ void LissajousComponent::onContentChanged() {
     float width = scale * static_cast<float>(glyph.metrics.width) / 64;
     fmt::println("advance = {}, bearing = {}, width = {}", advance, bearing,
                  width);
-    // float aspect = advance / h_face;
-    // m_outline_glyph_size.x = aspect * h_outline;
-    m_outline_glyph_size.x = advance;
+    m_outline_glyph_size.x = width;
     m_outline_glyph_size.y = h_outline;
-    m_outline_glyph_corner.x = w_outline + offset_x - (width + bearing);
+    m_outline_glyph_corner.x = w_outline + offset_x - width;
     // m_outline_glyph_corner.y =
     //     (1 - (bbox.max.y - descender) / h_face) * h_outline;
     m_outline_glyph_corner.y = 0;

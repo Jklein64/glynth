@@ -25,17 +25,13 @@ float sd_line_segment(in vec2 p, in vec2 a, in vec2 b) {
     return length(pa - h * ba);
 }
 
-// from https://iquilezles.org/articles/distfunctions2d/
-// float sd_box(in vec2 p, in vec2 b) {
-//     b = b / 2;
-//     vec2 d = abs(p) - b;
-//     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-// }
-// point p, bottom left corner c, size s
-bool in_box(vec2 p, vec2 c, vec2 s) {
-    bool in_x = c.x <= p.x && p.x <= c.x + s.x;
-    bool in_y = c.y <= p.y && p.y <= c.y + s.y;
-    return in_x && in_y;
+// modified from https://iquilezles.org/articles/distfunctions2d/
+// bottom left corner p, total dimensions b
+float sd_box(in vec2 p, in vec2 b) {
+    p -= b / 2;
+    b = b / 2;
+    vec2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
 void main() {
@@ -55,29 +51,16 @@ void main() {
             a = b;
         }
 
-        // if(p.x - u_outline_glyph_corner.x < u_outline_glyph_size.x && p.y - u_outline_glyph_corner.y < u_outline_glyph_size.y) {
-        //     frag_color = vec4(1, 0, 0, 1);
-        // }
-
-        if(in_box(p, u_outline_glyph_corner, u_outline_glyph_size)) {
-            frag_color.r = 1;
+        if(u_time != 0) {
+            // blink to show interactivity
+            vec2 corner = u_outline_glyph_corner;
+            vec2 size = u_outline_glyph_size;
+            // s.x += x;
+            // c.x -= x / 2;
+              // MacOS defaults to a period of 2 seconds, which looks good
+            float alpha = (atan(3 * sin(M_PI * 2 * u_time)) + 1) / 2;
+            float s = 1 - smoothstep(0.0, 2.0, sd_box(p - corner, size) - 1);
+            frag_color.xyz += alpha * 0.4 * s * ACCENT;
         }
-        // float d = sd_box(p - u_outline_glyph_corner, u_outline_glyph_size);
-        // float s = 1 - step(0.0, d);
-        // frag_color.xyz += s * vec3(1, 0, 0);
     }
-
-    // int texel = int(texcoord.x * num_samples);
-    // texel = min(texel, num_samples - 1);
-    // vec2 sample = texelFetch(u_samples, texel, 0).rg;
-    // float value = texcoord.y > 0.5 ? sample.y : sample.x;
-    // frag_color = vec4(value, 0, 0, 1);
-
-    // if (u_time == 0) {
-    //     frag_color = vec4(1, texcoord, 1);
-    // } else {
-    //     // MacOS defaults to a period of 2 seconds, which looks good
-    //     float alpha = (atan(3 *sin(M_PI * 2 * u_time)) + 1) / 2;
-    //     frag_color = vec4(texcoord, 1, alpha);
-    // }
 }
