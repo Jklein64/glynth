@@ -462,14 +462,17 @@ bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
   if (std::find(s_defocusing_keys.begin(), end, key_char) != end) {
     giveAwayKeyboardFocus();
   } else if (32 <= key_char && key_char <= 127) {
-    if (key_char == juce::KeyPress::backspaceKey && m_content.size() > 0) {
-      // DEL pressed, delete a character if possible
-      m_content.pop_back();
+    if (key_char == juce::KeyPress::backspaceKey) {
+      if (m_content.size() > 0) {
+        // DEL pressed, delete a character if possible
+        m_content.pop_back();
+        onContentChanged();
+      }
     } else {
       // key_char is a non-command ASCII value
       m_content += static_cast<char>(key_char);
+      onContentChanged();
     }
-    onContentChanged();
   }
   // The OS might interpret false here as "cannot type" and play an error noise
   return true;
@@ -486,6 +489,7 @@ void LissajousComponent::renderOpenGL() {
     if (m_outline == nullptr) {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
+      m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
       glTexSubImage1D(GL_TEXTURE_1D, 0, 0,
                       static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
                       m_samples.data());
@@ -497,7 +501,7 @@ void LissajousComponent::renderOpenGL() {
 
 void LissajousComponent::onContentChanged() {
   fmt::println(R"(m_content = "{}")", m_content);
-  m_outline.reset(m_content.size() > 0
+  m_outline.reset(m_content != ""
                       ? new Outline(m_content, m_face, s_pixel_height)
                       : nullptr);
   // TODO send outline to processor, for more sampling and wavetable building
@@ -508,8 +512,8 @@ void LissajousComponent::onContentChanged() {
       sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
       sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
     }
-    m_dirty = true;
   }
+  m_dirty = true;
 }
 
 float LissajousComponent::getTimeUniform() {
