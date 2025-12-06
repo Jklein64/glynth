@@ -507,10 +507,21 @@ void LissajousComponent::onContentChanged() {
   // TODO send outline to processor, for more sampling and wavetable building
   if (m_outline) {
     m_samples = m_outline->sample(s_num_outline_samples);
+    auto bounds = getBounds();
+    auto width = static_cast<float>(bounds.getWidth());
+    auto height = static_cast<float>(bounds.getHeight());
     auto& bbox = m_outline->bbox();
+    float face_height = static_cast<float>(m_face->size->metrics.height) / 64;
+    float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
+    float aspect = (bbox.max.x - bbox.min.x) / face_height;
+    // Shift and rescale samples so they fit inside component
     for (auto& sample : m_samples) {
+      // Normalize sample coordinates to 0 -> 1
       sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
-      sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
+      sample.y = (sample.y - descender) / face_height;
+      // Rescale to component height and match old aspect ratio
+      sample.x = sample.x * height * aspect;
+      sample.y = sample.y * height;
     }
   }
   m_dirty = true;

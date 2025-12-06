@@ -24,15 +24,14 @@ float sd_line_segment(in vec2 p, in vec2 a, in vec2 b) {
 
 void main() {
     frag_color = vec4(0, 0, 0, 1);
-    // TODO make all of this in screenspace
     if(u_has_outline) {
-        vec2 p = texcoord;
+        vec2 p = u_resolution * texcoord;
         int num_samples = textureSize(u_samples, 0);
-    // draw lines from a -> b
+        // draw lines from a -> b
         vec2 a = texelFetch(u_samples, 0, 0).rg;
         for(int i = 1; i < num_samples; i++) {
             vec2 b = texelFetch(u_samples, i, 0).rg;
-            float s = 1 - smoothstep(0.0, 0.001, sd_line_segment(p, a, b) - 0.003);
+            float s = 1 - smoothstep(0.0, 1.0, sd_line_segment(p, a, b) - 0.5);
             frag_color.xyz += s * ACCENT;
             a = b;
         }
