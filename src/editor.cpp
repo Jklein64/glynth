@@ -277,7 +277,6 @@ void TextComponent::renderOpenGL() {
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
   glActiveTexture(GL_TEXTURE0);
-  // TODO implement vertical and horizontal centering
   auto bounds = getBounds();
   auto* parent = getParentComponent();
   int parent_x = parent ? parent->getX() : 0;

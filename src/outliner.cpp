@@ -312,6 +312,7 @@ std::vector<glm::vec2> Outline::sample(size_t n) const {
   return sample(ts);
 }
 
+// TODO implement BLEPs to mitigate aliasing
 std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {
   if (m_segments.size() == 0) {
     return {};
