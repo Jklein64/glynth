@@ -163,6 +163,7 @@ public:
                      size_t m_num_samples = 512);
   ~LissajousComponent() override;
   void paint(juce::Graphics& g) override;
+  void resized() override;
   void mouseDown(const juce::MouseEvent& e) override;
   void focusGained(FocusChangeType cause) override;
   void focusLost(FocusChangeType cause) override;
@@ -178,7 +179,7 @@ private:
   void onContentChanged();
   float getTimeUniform();
 
-  std::string m_content = "";
+  std::string m_content = "Glynth";
   FT_Face m_face;
   // Null when the outline shouldn't be displayed
   std::unique_ptr<Outline> m_outline;

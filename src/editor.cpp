@@ -427,13 +427,6 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  using namespace juce::gl;
-  m_shader_manager.useProgram(m_program_id);
-  m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
-  m_shader_manager.setUniform(m_program_id, "u_outline_corner",
-                              m_outline_glyph_corner);
-  m_shader_manager.setUniform(m_program_id, "u_outline_face_size",
-                              m_outline_glyph_size);
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -443,6 +436,20 @@ LissajousComponent::~LissajousComponent() {
 void LissajousComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::red);
   g.drawRect(getLocalBounds());
+}
+
+void LissajousComponent::resized() {
+  // This must be in the resized method instead of the constructor because these
+  // methods depend on the bounds of this component, which aren't known then
+  using namespace juce::gl;
+  m_shader_manager.useProgram(m_program_id);
+  onContentChanged();
+  m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
+  m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
+                              m_outline_glyph_corner);
+  m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",
+                              m_outline_glyph_size);
+  RectComponent::resized();
 }
 
 void LissajousComponent::mouseDown(const juce::MouseEvent& e) {
@@ -496,8 +503,7 @@ bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
 
 void LissajousComponent::renderOpenGL() {
   m_shader_manager.useProgram(m_program_id);
-  float value = getTimeUniform();
-  m_shader_manager.setUniform(m_program_id, "u_time", value);
+  m_shader_manager.setUniform(m_program_id, "u_time", getTimeUniform());
   using namespace juce::gl;
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_1D, m_texture);
