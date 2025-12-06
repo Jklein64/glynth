@@ -54,6 +54,15 @@ void FontManager::addFace(std::string_view face_name) {
   }
 }
 
+FT_Face FontManager::getFace(std::string_view face_name) {
+  if (auto it = m_faces.find(std::string(face_name)); it != m_faces.end()) {
+    return it->second;
+  } else {
+    throw GlynthError(
+        fmt::format(R"(No face found with name "{}")", face_name));
+  }
+}
+
 void FontManager::buildBitmaps(std::string_view face_name,
                                FT_UInt pixel_height) {
   assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);

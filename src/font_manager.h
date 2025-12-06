@@ -19,6 +19,7 @@ public:
   FontManager(juce::OpenGLContext& context);
   ~FontManager();
   void addFace(std::string_view face_name);
+  FT_Face getFace(std::string_view face_name);
   void buildBitmaps(std::string_view face_name, FT_UInt pixel_height);
   const Character& getCharacter(std::string_view face_name, char character,
                                 FT_UInt pixel_height);
