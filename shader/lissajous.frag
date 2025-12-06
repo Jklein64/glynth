@@ -43,11 +43,10 @@ void main() {
         vec2 a = texelFetch(u_samples, 0, 0).rg;
         for(int i = 1; i < num_samples; i++) {
             vec2 b = texelFetch(u_samples, i, 0).rg;
-            // offset start and end to avoid excessive overdraw
-            vec2 v = 0.8 * normalize(b - a);
-            float d = sd_line_segment(p, a + v, b - v) - 0.5;
+            float d = sd_line_segment(p, a, b) - 0.5;
             float s = 1 - smoothstep(0.0, 1.0, d);
-            frag_color.xyz += s * ACCENT;
+            // handle extra overdraw by merging with max instead of a sum
+            frag_color.xyz = max(frag_color.xyz, s * ACCENT);
             a = b;
         }
 
