@@ -1,6 +1,7 @@
 #version 330 core
 
 #define M_PI 3.1415926535897932384626433832795
+const vec3 ACCENT = vec3(0.9607843137, 0.7529411765, 0.137254902);
 
 // zero means not focused
 uniform float u_time;
@@ -17,7 +18,7 @@ out vec4 frag_color;
 float sd_line_segment(in vec2 p, in vec2 a, in vec2 b) {
     vec2 ba = b - a;
     vec2 pa = p - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.);
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
     return length(pa - h * ba);
 }
 
@@ -26,16 +27,15 @@ void main() {
     // TODO make all of this in screenspace
     vec2 p = texcoord;
     int num_samples = textureSize(u_samples, 0);
-    for(int i = 0; i < num_samples; i++) {
-        vec2 b = texelFetch(u_samples, i, 0).rg;
-        frag_color.r += 1 - smoothstep(0.0, 0.02, distance(p, b));
-    }
     // draw lines from a -> b
-    // vec2 a = texelFetch(u_samples, 0, 0).rg;
-    // for (int i = 1; i < num_samples; i++) {
-    //     vec2 b = texelFetch(u_samples, i, 0).rg;
+    vec2 a = texelFetch(u_samples, 0, 0).rg;
+    for(int i = 1; i < num_samples; i++) {
+        vec2 b = texelFetch(u_samples, i, 0).rg;
+        float s = 1 - smoothstep(0.0, 0.001, sd_line_segment(p, a, b) - 0.001);
+        frag_color.xyz += s * ACCENT;
+        a = b;
+    }
 
-    // }
     // int texel = int(texcoord.x * num_samples);
     // texel = min(texel, num_samples - 1);
     // vec2 sample = texelFetch(u_samples, texel, 0).rg;
