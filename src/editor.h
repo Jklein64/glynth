@@ -178,9 +178,6 @@ private:
   void onContentChanged();
   float getTimeUniform();
 
-  std::array<glm::vec2, 5> m_values = {
-      {{0.1f, 0.0f}, {0.2f, 0.0f}, {0.3f, 0.0f}, {0.5f, 0.0f}, {0.7f, 0.0f}}};
-
   std::string m_content = "";
   FT_Face m_face;
   std::unique_ptr<Outline> m_outline;
