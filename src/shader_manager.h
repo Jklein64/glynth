@@ -53,7 +53,8 @@ private:
   std::unordered_map<ProgramId, std::unique_ptr<juce::OpenGLShaderProgram>>
       m_programs;
   std::unordered_map<ProgramId, ProgramMetadata> m_metadata;
-  std::unordered_map<ProgramId, std::vector<std::function<bool()>>>
+  std::unordered_map<ProgramId,
+                     std::unordered_map<std::string, std::function<bool()>>>
       m_uniform_refreshers;
 
 #ifdef GLYNTH_HSR

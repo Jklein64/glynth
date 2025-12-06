@@ -116,7 +116,7 @@ bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
   };
   bool result = uniform_refresher();
 #ifdef GLYNTH_HSR
-  m_uniform_refreshers[id].push_back(std::move(uniform_refresher));
+  m_uniform_refreshers[id][name] = std::move(uniform_refresher);
 #endif
   return result;
 }
@@ -143,7 +143,7 @@ void ShaderManager::tryUpdateDirty() {
       if (program != nullptr) {
         program->use();
         if (m_uniform_refreshers.contains(id)) {
-          for (auto& refresher : m_uniform_refreshers.at(id)) {
+          for (auto& [_, refresher] : m_uniform_refreshers.at(id)) {
             refresher();
           }
         }

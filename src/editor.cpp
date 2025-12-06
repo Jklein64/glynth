@@ -489,12 +489,16 @@ void LissajousComponent::renderOpenGL() {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_1D, m_texture);
   if (m_dirty) {
-    // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
-    // static_cast<GLsizei>(m_values.size()),
-    //              0, GL_RG, GL_FLOAT, m_values.data());
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
-                 static_cast<GLsizei>(m_samples.size()), 0, GL_RG, GL_FLOAT,
-                 m_samples.data());
+    if (m_outline == nullptr) {
+      m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
+    } else {
+      // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+      // static_cast<GLsizei>(m_values.size()),
+      //              0, GL_RG, GL_FLOAT, m_values.data());
+      glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+                   static_cast<GLsizei>(m_samples.size()), 0, GL_RG, GL_FLOAT,
+                   m_samples.data());
+    }
     m_dirty = false;
   }
   RectComponent::renderOpenGL();
@@ -515,10 +519,7 @@ void LissajousComponent::onContentChanged() {
     }
     m_values = {
         {{0.1f, 0.2f}, {0.2f, 0.4f}, {0.3f, 0.6f}, {0.5f, 0.5f}, {0.7f, 0.3f}}};
-    m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
     m_dirty = true;
-  } else {
-    m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
   }
 }
 
