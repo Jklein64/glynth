@@ -2,23 +2,45 @@
 
 #define M_PI 3.1415926535897932384626433832795
 
-// Zero means not focused
+// zero means not focused
 uniform float u_time;
-// Samples of the outline, rg -> xy
+// samples of the outline, rg -> xy
 uniform sampler1D u_samples;
-// Whether the outline is valid
+// whether the outline is valid
 uniform bool u_has_outline;
+uniform vec2 u_resolution;
 
 in vec2 texcoord;
 out vec4 frag_color;
 
+// from https://www.shadertoy.com/view/Wlfyzl
+float sd_line_segment(in vec2 p, in vec2 a, in vec2 b) {
+    vec2 ba = b - a;
+    vec2 pa = p - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.);
+    return length(pa - h * ba);
+}
+
 void main() {
+    frag_color = vec4(0, 0, 0, 1);
+    // TODO make all of this in screenspace
+    vec2 p = texcoord;
     int num_samples = textureSize(u_samples, 0);
-    int texel = int(texcoord.x * num_samples);
-    texel = min(texel, num_samples - 1);
-    vec2 sample = texelFetch(u_samples, texel, 0).rg;
-    float value = texcoord.y > 0.5 ? sample.y : sample.x;
-    frag_color = vec4(value, 0, 0, 1);
+    for(int i = 0; i < num_samples; i++) {
+        vec2 b = texelFetch(u_samples, i, 0).rg;
+        frag_color.r += 1 - smoothstep(0.0, 0.02, distance(p, b));
+    }
+    // draw lines from a -> b
+    // vec2 a = texelFetch(u_samples, 0, 0).rg;
+    // for (int i = 1; i < num_samples; i++) {
+    //     vec2 b = texelFetch(u_samples, i, 0).rg;
+
+    // }
+    // int texel = int(texcoord.x * num_samples);
+    // texel = min(texel, num_samples - 1);
+    // vec2 sample = texelFetch(u_samples, texel, 0).rg;
+    // float value = texcoord.y > 0.5 ? sample.y : sample.x;
+    // frag_color = vec4(value, 0, 0, 1);
 
     // if (u_time == 0) {
     //     frag_color = vec4(1, texcoord, 1);

@@ -180,6 +180,7 @@ private:
 
   std::string m_content = "";
   FT_Face m_face;
+  // Null when the outline shouldn't be displayed
   std::unique_ptr<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
   GLuint m_texture;
