@@ -211,38 +211,8 @@ glm::vec2 Outline::sample(float t) const {
 }
 
 // Outliner
-Outliner::Outliner(std::string_view font_path) {
-  // Initialize Freetype library
-  if (s_library == nullptr) {
-    FT_Error error = FT_Init_FreeType(&s_library);
-    if (error) {
-      throw FreetypeError(FT_Error_String(error));
-    }
-  }
-
-  FT_Error error = FT_New_Face(s_library, font_path.data(), 0, &m_face);
-  if (error) {
-    throw FreetypeError(FT_Error_String(error));
-  }
-}
-
-// Useful for custom non-standard fonts that will be bundled as binary data
-Outliner::Outliner(std::span<const std::byte, std::dynamic_extent> font_data) {
-  // Initialize Freetype library
-  if (s_library == nullptr) {
-    FT_Error error = FT_Init_FreeType(&s_library);
-    if (error) {
-      throw FreetypeError(FT_Error_String(error));
-    }
-  }
-
-  FT_Error error = FT_New_Memory_Face(
-      s_library, reinterpret_cast<const FT_Byte*>(font_data.data()),
-      font_data.size(), 0, &m_face);
-  if (error) {
-    throw FreetypeError(FT_Error_String(error));
-  }
-}
+Outliner::Outliner(FT_Library library, FT_Face face)
+    : m_library(library), m_face(face) {}
 
 std::string Outline::svg_str() const {
   std::stringstream ss;

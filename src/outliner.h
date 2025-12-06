@@ -55,13 +55,11 @@ private:
 
 class Outliner {
 public:
-  Outliner(std::string_view font_path);
-  Outliner(std::span<const std::byte> font_data);
+  Outliner(FT_Library library, FT_Face face);
   Outline outline(std::string_view text, uint32_t pixel_height);
 
 private:
-  // Must explicitly initialize or linking fails
-  inline static FT_Library s_library{nullptr};
+  FT_Library m_library;
   FT_Face m_face;
 };
 

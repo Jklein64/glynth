@@ -1,3 +1,4 @@
+#include "error.h"
 #include "fonts.h"
 #include "outliner.h"
 
@@ -13,9 +14,21 @@
 #include <string>
 
 int main() {
-  std::vector<std::byte> data(fonts::SplineSansMonoMedium_ttfSize);
+  FT_Error err;
+  FT_Library library;
+  if ((err = FT_Init_FreeType(&library))) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+
+  std::vector<FT_Byte> data(fonts::SplineSansMonoMedium_ttfSize);
   std::memcpy(data.data(), fonts::SplineSansMonoMedium_ttf, data.size());
-  glynth::Outliner outliner(data);
+
+  FT_Face face;
+  if ((err = FT_New_Memory_Face(library, data.data(), data.size(), 0, &face))) {
+    throw FreetypeError(FT_Error_String(err));
+  }
+
+  glynth::Outliner outliner(library, face);
   auto outline = outliner.outline("Glynth", 16);
   // Save to svg file for preview
   std::ofstream svg_file("./out/outline.svg");
