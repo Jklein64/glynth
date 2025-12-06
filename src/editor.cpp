@@ -508,28 +508,29 @@ void LissajousComponent::onContentChanged() {
   if (m_outline) {
     m_samples = m_outline->sample(s_num_outline_samples);
     auto bounds = getBounds();
-    auto width = static_cast<float>(bounds.getWidth());
-    auto height = static_cast<float>(bounds.getHeight());
+    auto w_bounds = static_cast<float>(bounds.getWidth());
+    auto h_bounds = static_cast<float>(bounds.getHeight());
     auto& bbox = m_outline->bbox();
-    float face_height = static_cast<float>(m_face->size->metrics.height) / 64;
+    float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
     float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
-    float new_width = height / face_height * bbox.width();
-    float new_height = height;
-    if (new_width > width) {
+    float w_outline = h_bounds / h_face * bbox.width();
+    float h_outline = h_bounds;
+    if (w_outline > w_bounds) {
       // Rescale so that new_width = width
-      new_height *= width / new_width;
-      new_width = width;
+      h_outline *= w_bounds / w_outline;
+      w_outline = w_bounds;
     }
     // Offsets trequired to center the text in the component
-    float offset_x = (width - new_width) / 2;
+    float offset_x = (w_bounds - w_outline) / 2;
+    float offset_y = (h_bounds - h_outline) / 2;
     // Shift and rescale samples so they fit inside component
     for (auto& sample : m_samples) {
       // Normalize sample coordinates to 0 -> 1
       sample.x = (sample.x - bbox.min.x) / bbox.width();
-      sample.y = (sample.y - descender) / face_height;
+      sample.y = (sample.y - descender) / h_face;
       // Rescale to component height and match old aspect ratio
-      sample.x = sample.x * new_width + offset_x;
-      sample.y = sample.y * new_height;
+      sample.x = sample.x * w_outline + offset_x;
+      sample.y = sample.y * h_outline + offset_y;
     }
   }
   m_dirty = true;
