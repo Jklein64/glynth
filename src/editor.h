@@ -1,6 +1,7 @@
 #pragma once
 
 #include "font_manager.h"
+#include "outliner.h"
 #include "processor.h"
 #include "shader_manager.h"
 
@@ -171,11 +172,23 @@ private:
   static inline std::array s_defocusing_keys = {juce::KeyPress::returnKey,
                                                 juce::KeyPress::escapeKey,
                                                 juce::KeyPress::tabKey};
+  static constexpr FT_UInt s_pixel_height = 20;
+  static constexpr size_t s_num_outline_samples = 512;
 
   void onContentChanged();
   float getTimeUniform();
 
+  std::array<glm::vec2, 5> m_values = {
+      {{0.1f, 0.0f}, {0.2f, 0.0f}, {0.3f, 0.0f}, {0.5f, 0.0f}, {0.7f, 0.0f}}};
+
   std::string m_content = "";
+  FT_Face m_face;
+  std::unique_ptr<Outline> m_outline;
+  std::vector<glm::vec2> m_outline_samples;
+  GLuint m_texture;
+  // Dirty flag since texture cannot be updated in the callback thread
+  std::atomic<bool> m_dirty = false;
+  // For focus cursor blinking
   std::chrono::time_point<std::chrono::high_resolution_clock> m_last_focus_time;
   bool m_focused = false;
 

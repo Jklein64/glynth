@@ -403,6 +403,8 @@ void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
 LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id)
     : RectComponent(editor_ref, program_id) {
+  m_face = m_font_manager.getFace("SplineSansMono-Medium");
+  m_outline_samples.resize(s_num_outline_samples);
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
   setMouseClickGrabsKeyboardFocus(true);
@@ -411,6 +413,28 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   // Listen to mouse events anywhere on the editor
   m_editor_ref.addMouseListener(this, true);
   lock.exit();
+  // Prepare texture for sending outline samples
+  using namespace juce::gl;
+  glGenTextures(1, &m_texture);
+  glBindTexture(GL_TEXTURE_1D, m_texture);
+  // Disable byte-alignment restriction
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  // Store x in red component and y in green component
+  glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+               static_cast<GLsizei>(m_outline_samples.size()), 0, GL_RG,
+               GL_FLOAT, m_outline_samples.data());
+  // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+  // static_cast<GLsizei>(m_values.size()),
+  //              0, GL_RG, GL_FLOAT, m_values.data());
+  // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG, s_num_outline_samples, 0, GL_RG,
+  //              GL_FLOAT,
+  //              reinterpret_cast<const void*>(m_outline_samples.data()));
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  m_shader_manager.useProgram(m_program_id);
+  m_shader_manager.setUniform(m_program_id, "u_num_outline_samples",
+                              s_num_outline_samples);
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -462,12 +486,34 @@ void LissajousComponent::renderOpenGL() {
   m_shader_manager.useProgram(m_program_id);
   float value = getTimeUniform();
   m_shader_manager.setUniform(m_program_id, "u_time", value);
+  using namespace juce::gl;
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_1D, m_texture);
+  if (m_dirty) {
+    // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+    // static_cast<GLsizei>(m_values.size()),
+    //              0, GL_RG, GL_FLOAT, m_values.data());
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
+                 static_cast<GLsizei>(m_outline_samples.size()), 0, GL_RG,
+                 GL_FLOAT, m_outline_samples.data());
+    m_dirty = false;
+  }
   RectComponent::renderOpenGL();
 }
 
 void LissajousComponent::onContentChanged() {
   fmt::println(R"(m_content = "{}")", m_content);
-  fmt::println("TODO: regenerate outline");
+  m_outline.reset(new Outline(m_content, m_face, s_pixel_height));
+  // TODO send outline to processor, for more sampling and wavetable building
+  m_outline_samples = m_outline->sample(s_num_outline_samples);
+  auto& bbox = m_outline->bbox();
+  for (auto& sample : m_outline_samples) {
+    sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
+    sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
+  }
+  m_values = {
+      {{0.1f, 0.2f}, {0.2f, 0.4f}, {0.3f, 0.6f}, {0.5f, 0.5f}, {0.7f, 0.3f}}};
+  m_dirty = true;
 }
 
 float LissajousComponent::getTimeUniform() {

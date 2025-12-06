@@ -87,6 +87,7 @@ target_sources(
         src/processor.cpp
         src/shader_manager.cpp
         src/font_manager.cpp
+        src/outliner.cpp
 )
 target_compile_features(glynth PRIVATE cxx_std_20)
 option(GLYNTH_HOT_SHADER_RELOAD "Enable hot reloading of shaders" OFF)
