@@ -96,7 +96,9 @@ bool ShaderManager::setUniform(const ProgramId& id, const std::string& name,
       std::visit(
           [&program, &name](auto& arg) {
             using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, float>) {
+            if constexpr (std::is_integral_v<T>) {
+              program.setUniform(name.c_str(), static_cast<GLint>(arg));
+            } else if constexpr (std::is_same_v<T, float>) {
               program.setUniform(name.c_str(), arg);
             } else if constexpr (std::is_same_v<T, glm::vec2>) {
               program.setUniform(name.c_str(), arg.x, arg.y);
