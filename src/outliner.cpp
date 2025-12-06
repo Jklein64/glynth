@@ -163,6 +163,9 @@ void BoundingBox::expand(const BoundingBox& other) {
   max = glm::max(max, other.max);
 }
 
+float BoundingBox::width() const { return max.x - min.x; }
+float BoundingBox::height() const { return max.y - min.y; }
+
 // Outline
 
 struct UserData {

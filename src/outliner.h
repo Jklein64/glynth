@@ -28,6 +28,8 @@ struct BoundingBox {
   BoundingBox();
   BoundingBox(FT_BBox bbox);
   void expand(const BoundingBox& other);
+  float width() const;
+  float height() const;
   // a is at the bottom left, b is at the top right
   glm::vec2 min, max;
 };
