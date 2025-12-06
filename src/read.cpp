@@ -41,14 +41,17 @@ int main() {
 
   // Save trace to numpy file for reconstruction
   // One cycle of an 80 Hz wave at 44.1 kHz is around 550 samples
-  npy::tensor<float> points(std::vector<size_t>{550, 2});
-  for (int i = 0; i < points.shape(0); i++) {
-    float t = static_cast<float>(i) / (points.shape(0) - 1);
+  std::vector<float> parameters(550);
+  for (int i = 0; i < parameters.size(); i++) {
+    float t = static_cast<float>(i) / (parameters.size() - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     t = std::clamp(t, 0.0f, std::nextafterf(1.0f, 0.0f));
-    std::vector<glm::vec2> point = outline.sample(std::span{&t, 1});
-    points(i, 0) = point[0].x;
-    points(i, 1) = point[0].y;
+    parameters[i] = t;
   }
-  npy::save("./out/outline.npy", points);
+  auto points = outline.sample(parameters);
+  npy::tensor<float> points_npy(std::vector<size_t>{parameters.size(), 2});
+  // Valid because glm vectors are densely packed and npy data is row-major
+  points_npy.copy_from(reinterpret_cast<float*>(points.data()),
+                       points.size() * 2);
+  npy::save("./out/outline.npy", points_npy);
 }

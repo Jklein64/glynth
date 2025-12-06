@@ -317,6 +317,33 @@ glm::vec2 Outline::sample(float t) const {
   return m_segments[j].sample(j_decimal - j);
 }
 
+std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {
+  std::vector<glm::vec2> samples(ts.size());
+  for (size_t i = 0; i < samples.size(); i++) {
+    float t = ts[i];
+    assert(0 <= t && t < 1);
+    float total_length = 0.0f;
+    for (auto&& segment : m_segments) {
+      total_length += segment.length();
+    }
+    // Find the i such that distances[i] = t * total_length
+    size_t i_best = 0;
+    float v_best = std::numeric_limits<float>::infinity();
+    for (size_t i = 0; i < m_num_param_samples; i++) {
+      float v = std::abs(m_distances[i] - t * total_length);
+      if (v < v_best) {
+        i_best = i;
+        v_best = v;
+      }
+    }
+    // Do the naive sampling with t = parameters[i_best]
+    float j_decimal = m_parameters[i_best] * m_segments.size();
+    size_t j = static_cast<size_t>(j_decimal);
+    samples[i] = m_segments[j].sample(j_decimal - j);
+  }
+  return samples;
+}
+
 std::string Outline::svg_str() const {
   std::stringstream ss;
   for (auto&& segment : m_segments) {
