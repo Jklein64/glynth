@@ -1,4 +1,5 @@
 #include "outliner.h"
+#include "error.h"
 
 #include <freetype/ftoutln.h>
 #include <optional>
@@ -6,12 +7,6 @@
 #include <string>
 
 namespace glynth {
-
-class FreetypeError : public std::runtime_error {
-public:
-  explicit FreetypeError(const std::string& msg) : std::runtime_error(msg) {}
-  explicit FreetypeError(char* msg) : std::runtime_error(msg) {}
-};
 
 // Segment
 Segment::Segment(FT_Vector p0) : m_order(0) {
@@ -164,6 +159,119 @@ void BoundingBox::expand(const BoundingBox& other) {
 }
 
 // Outline
+
+struct UserData {
+  FT_Vector& pen;
+  std::vector<Segment>& segments;
+  std::optional<FT_Vector> p0;
+};
+
+FT_Outline_Funcs funcs = (FT_Outline_Funcs){
+    .move_to =
+        [](const FT_Vector* to, void* user) {
+          auto& u = *static_cast<UserData*>(user);
+          FT_Vector p0 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          u.segments.emplace_back(p0);
+          u.p0 = p0;
+          return 0;
+        },
+    .line_to =
+        [](const FT_Vector* to, void* user) {
+          auto& u = *static_cast<UserData*>(user);
+          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          if (u.p0.has_value()) {
+            u.segments.emplace_back(*u.p0, p1);
+          }
+          u.p0 = p1;
+          return 0;
+        },
+    .conic_to =
+        [](const FT_Vector* c0, const FT_Vector* to, void* user) {
+          auto& u = *static_cast<UserData*>(user);
+          FT_Vector p2 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          if (u.p0.has_value()) {
+            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
+            u.segments.emplace_back(*u.p0, p1, p2);
+          }
+          u.p0 = p2;
+          return 0;
+        },
+    .cubic_to =
+        [](const FT_Vector* c0, const FT_Vector* c1, const FT_Vector* to,
+           void* user) {
+          auto& u = *static_cast<UserData*>(user);
+          FT_Vector p3 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
+          if (u.p0.has_value()) {
+            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
+            FT_Vector p2 = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
+            u.segments.emplace_back(*u.p0, p1, p2, p3);
+          }
+          u.p0 = p3;
+          return 0;
+        },
+};
+
+Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
+                 size_t arc_length_samples) {
+  FT_Error err;
+  FT_Vector pen{.x = 0, .y = 0};
+  UserData user = {
+      .pen = pen,
+      .segments = m_segments,
+      .p0 = std::nullopt,
+  };
+
+  for (size_t i = 0; i < text.size(); i++) {
+    if ((err = FT_Load_Char(face, text[i], FT_LOAD_DEFAULT))) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+
+    FT_GlyphSlot glyph = face->glyph;
+    if (glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
+      throw GlynthError(
+          fmt::format("(Glyph for '{}' was not an outline)", text[i]));
+    }
+
+    if ((err = FT_Outline_Decompose(&glyph->outline, &funcs, &user))) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+
+    FT_BBox cbox;
+    FT_Outline_Get_CBox(&glyph->outline, &cbox);
+    cbox.xMin += pen.x;
+    cbox.xMax += pen.x;
+    cbox.yMin += pen.y;
+    cbox.yMax += pen.y;
+    m_bbox.expand(BoundingBox(cbox));
+    pen.x += glyph->advance.x;
+    pen.y += glyph->advance.y;
+  }
+
+  // Flip vertically so origin is in top right
+  for (auto&& segment : m_segments) {
+    for (auto&& point : segment.m_points) {
+      point.y = m_bbox.max.y - (point.y - m_bbox.min.y);
+    }
+  }
+
+  // See https://pomax.github.io/bezierinfo/#tracing
+  m_parameters.resize(arc_length_samples);
+  m_distances.resize(arc_length_samples, 0.0f);
+  for (size_t i = 0; i < arc_length_samples; i++) {
+    m_parameters[i] = static_cast<float>(i) / (arc_length_samples - 1);
+    // Clamp to within [0, 1) to ensure index is always valid
+    m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
+    float j_decimal = m_parameters[i] * m_segments.size();
+    size_t j = static_cast<size_t>(j_decimal);
+    // Add length of all segments coming before segment j
+    for (size_t k = 0; k < j; k++) {
+      m_distances[i] += m_segments[k].length();
+    }
+    // Add length of the part of segment j included by parameter
+    m_distances[i] += m_segments[j].length(j_decimal - j);
+  }
+}
+
 Outline::Outline(std::vector<Segment>&& segments, BoundingBox bbox)
     : m_segments(segments), m_bbox(bbox) {
   // See https://pomax.github.io/bezierinfo/#tracing
@@ -221,57 +329,6 @@ std::string Outline::svg_str() const {
   }
   return ss.str();
 }
-
-struct UserData {
-  FT_Vector& pen;
-  std::vector<Segment>& segments;
-  std::optional<FT_Vector> p0;
-};
-
-FT_Outline_Funcs funcs = (FT_Outline_Funcs){
-    .move_to =
-        [](const FT_Vector* to, void* user) {
-          auto& u = *static_cast<UserData*>(user);
-          FT_Vector p0 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
-          u.segments.emplace_back(p0);
-          u.p0 = p0;
-          return 0;
-        },
-    .line_to =
-        [](const FT_Vector* to, void* user) {
-          auto& u = *static_cast<UserData*>(user);
-          FT_Vector p1 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
-          if (u.p0.has_value()) {
-            u.segments.emplace_back(*u.p0, p1);
-          }
-          u.p0 = p1;
-          return 0;
-        },
-    .conic_to =
-        [](const FT_Vector* c0, const FT_Vector* to, void* user) {
-          auto& u = *static_cast<UserData*>(user);
-          FT_Vector p2 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
-          if (u.p0.has_value()) {
-            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-            u.segments.emplace_back(*u.p0, p1, p2);
-          }
-          u.p0 = p2;
-          return 0;
-        },
-    .cubic_to =
-        [](const FT_Vector* c0, const FT_Vector* c1, const FT_Vector* to,
-           void* user) {
-          auto& u = *static_cast<UserData*>(user);
-          FT_Vector p3 = (FT_Vector){to->x + u.pen.x, to->y + u.pen.y};
-          if (u.p0.has_value()) {
-            FT_Vector p1 = (FT_Vector){c0->x + u.pen.x, c0->y + u.pen.y};
-            FT_Vector p2 = (FT_Vector){c1->x + u.pen.x, c1->y + u.pen.y};
-            u.segments.emplace_back(*u.p0, p1, p2, p3);
-          }
-          u.p0 = p3;
-          return 0;
-        },
-};
 
 Outline Outliner::outline(std::string_view text, uint32_t pixel_height) {
   FT_Error error = FT_Set_Pixel_Sizes(m_face, 0, pixel_height);

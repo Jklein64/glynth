@@ -4,7 +4,6 @@
 #include <fmt/format.h>
 #include <freetype/freetype.h>
 #include <glm/glm.hpp>
-#include <span>
 #include <string_view>
 #include <vector>
 
@@ -12,6 +11,7 @@ namespace glynth {
 
 struct Segment {
   friend class Outliner;
+  friend class Outline;
 
   Segment(FT_Vector p0);
   Segment(FT_Vector p0, FT_Vector p1);
@@ -37,6 +37,8 @@ struct BoundingBox {
 
 class Outline {
 public:
+  Outline(std::string_view text, FT_Face face, FT_UInt pixel_height = 20,
+          size_t arc_length_samples = 10000);
   Outline(std::vector<Segment>&& segments, BoundingBox bbox);
   const std::vector<Segment>& segments() const;
   const BoundingBox& bbox() const;
