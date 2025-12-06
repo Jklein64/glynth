@@ -514,13 +514,15 @@ void LissajousComponent::onContentChanged() {
     float face_height = static_cast<float>(m_face->size->metrics.height) / 64;
     float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
     float aspect = (bbox.max.x - bbox.min.x) / face_height;
+    // Offsets trequired to center the text in the component
+    float offset_x = (width - aspect * height) / 2;
     // Shift and rescale samples so they fit inside component
     for (auto& sample : m_samples) {
       // Normalize sample coordinates to 0 -> 1
       sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
       sample.y = (sample.y - descender) / face_height;
       // Rescale to component height and match old aspect ratio
-      sample.x = sample.x * height * aspect;
+      sample.x = sample.x * height * aspect + offset_x;
       sample.y = sample.y * height;
     }
   }
