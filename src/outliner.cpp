@@ -304,7 +304,7 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
 };
 
 Outline Outliner::outline(std::string_view text, uint32_t pixel_height) {
-  FT_Error error = FT_Set_Pixel_Sizes(m_face, 0, 16);
+  FT_Error error = FT_Set_Pixel_Sizes(m_face, 0, pixel_height);
   if (error) {
     throw FreetypeError(FT_Error_String(error));
   }
