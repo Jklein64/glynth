@@ -212,7 +212,8 @@ FT_Outline_Funcs funcs = (FT_Outline_Funcs){
 };
 
 Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
-                 size_t arc_length_samples) {
+                 size_t num_param_samples)
+    : m_num_param_samples(num_param_samples) {
   FT_Error err;
   FT_Vector pen{.x = 0, .y = 0};
   UserData user = {
@@ -255,10 +256,10 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
   }
 
   // See https://pomax.github.io/bezierinfo/#tracing
-  m_parameters.resize(arc_length_samples);
-  m_distances.resize(arc_length_samples, 0.0f);
-  for (size_t i = 0; i < arc_length_samples; i++) {
-    m_parameters[i] = static_cast<float>(i) / (arc_length_samples - 1);
+  m_parameters.resize(m_num_param_samples);
+  m_distances.resize(m_num_param_samples, 0.0f);
+  for (size_t i = 0; i < m_num_param_samples; i++) {
+    m_parameters[i] = static_cast<float>(i) / (m_num_param_samples - 1);
     // Clamp to within [0, 1) to ensure index is always valid
     m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
     float j_decimal = m_parameters[i] * m_segments.size();
@@ -272,25 +273,25 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
   }
 }
 
-Outline::Outline(std::vector<Segment>&& segments, BoundingBox bbox)
-    : m_segments(segments), m_bbox(bbox) {
-  // See https://pomax.github.io/bezierinfo/#tracing
-  m_parameters.resize(s_samples);
-  m_distances.resize(s_samples, 0.0f);
-  for (size_t i = 0; i < s_samples; i++) {
-    m_parameters[i] = static_cast<float>(i) / (s_samples - 1);
-    // Clamp to within [0, 1) to ensure index is always valid
-    m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
-    float j_decimal = m_parameters[i] * m_segments.size();
-    size_t j = static_cast<size_t>(j_decimal);
-    // Add length of all segments coming before segment j
-    for (size_t k = 0; k < j; k++) {
-      m_distances[i] += m_segments[k].length();
-    }
-    // Add length of the part of segment j included by parameter
-    m_distances[i] += m_segments[j].length(j_decimal - j);
-  }
-}
+// Outline::Outline(std::vector<Segment>&& segments, BoundingBox bbox)
+//     : m_segments(segments), m_bbox(bbox) {
+//   // See https://pomax.github.io/bezierinfo/#tracing
+//   m_parameters.resize(s_samples);
+//   m_distances.resize(s_samples, 0.0f);
+//   for (size_t i = 0; i < s_samples; i++) {
+//     m_parameters[i] = static_cast<float>(i) / (s_samples - 1);
+//     // Clamp to within [0, 1) to ensure index is always valid
+//     m_parameters[i] = std::min(m_parameters[i], std::nextafter(1.0f, 0.0f));
+//     float j_decimal = m_parameters[i] * m_segments.size();
+//     size_t j = static_cast<size_t>(j_decimal);
+//     // Add length of all segments coming before segment j
+//     for (size_t k = 0; k < j; k++) {
+//       m_distances[i] += m_segments[k].length();
+//     }
+//     // Add length of the part of segment j included by parameter
+//     m_distances[i] += m_segments[j].length(j_decimal - j);
+//   }
+// }
 
 const std::vector<Segment>& Outline::segments() const { return m_segments; }
 
@@ -305,7 +306,7 @@ glm::vec2 Outline::sample(float t) const {
   // Find the i such that distances[i] = t * total_length
   size_t i_best = 0;
   float v_best = std::numeric_limits<float>::infinity();
-  for (size_t i = 0; i < s_samples; i++) {
+  for (size_t i = 0; i < m_num_param_samples; i++) {
     float v = std::abs(m_distances[i] - t * total_length);
     if (v < v_best) {
       i_best = i;

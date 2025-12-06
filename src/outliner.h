@@ -50,7 +50,7 @@ private:
   std::vector<Segment> m_segments;
   BoundingBox m_bbox;
   // For arc-length parameterization
-  inline static constexpr size_t s_samples = 10000;
+  size_t m_num_param_samples;
   std::vector<float> m_parameters;
   std::vector<float> m_distances;
 };
