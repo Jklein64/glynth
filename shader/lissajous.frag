@@ -36,8 +36,8 @@ float sd_box(in vec2 p, in vec2 b) {
 
 void main() {
     frag_color = vec4(0, 0, 0, 1);
+    vec2 p = u_resolution * texcoord;
     if(u_has_outline) {
-        vec2 p = u_resolution * texcoord;
         int num_samples = textureSize(u_samples, 0);
         // draw lines from a -> b
         vec2 a = texelFetch(u_samples, 0, 0).rg;
@@ -50,16 +50,16 @@ void main() {
             a = b;
         }
 
-        if(u_time >= 0) {
+    }
+    if(u_time >= 0) {
             // blink to show interactivity
-            vec2 corner = u_outline_glyph_corner;
-            vec2 size = u_outline_glyph_size;
+        vec2 corner = u_outline_glyph_corner;
+        vec2 size = u_outline_glyph_size;
             // s.x += x;
             // c.x -= x / 2;
               // MacOS defaults to a period of 2 seconds, which looks good
-            float alpha = (atan(3 * cos(M_PI * 2 * u_time)) + 1) / 2;
-            float s = 1 - smoothstep(0.0, 2.0, sd_box(p - corner, size) - 1);
-            frag_color.xyz += alpha * 0.4 * s * ACCENT;
-        }
+        float alpha = (atan(3 * cos(M_PI * 2 * u_time)) + 1) / 2;
+        float s = 1 - smoothstep(0.0, 2.0, sd_box(p - corner, size) - 1);
+        frag_color.xyz += alpha * 0.4 * s * ACCENT;
     }
 }

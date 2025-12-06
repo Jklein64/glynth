@@ -1,6 +1,7 @@
 #include "outliner.h"
 #include "error.h"
 
+#include <freetype/ftbbox.h>
 #include <freetype/ftoutln.h>
 #include <juce_core/juce_core.h>
 #include <optional>
@@ -252,13 +253,15 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
       throw FreetypeError(FT_Error_String(err));
     }
 
-    FT_BBox cbox;
-    FT_Outline_Get_CBox(&glyph->outline, &cbox);
-    cbox.xMin += pen.x;
-    cbox.xMax += pen.x;
-    cbox.yMin += pen.y;
-    cbox.yMax += pen.y;
-    m_bbox.expand(BoundingBox(cbox));
+    FT_BBox bbox;
+    if ((err = FT_Outline_Get_BBox(&glyph->outline, &bbox))) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+    bbox.xMin += pen.x;
+    bbox.xMax += pen.x;
+    bbox.yMin += pen.y;
+    bbox.yMax += pen.y;
+    m_bbox.expand(BoundingBox(bbox));
     pen.x += glyph->advance.x;
     pen.y += glyph->advance.y;
   }
@@ -268,6 +271,10 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
     for (auto&& segment : m_segments) {
       segment.flip(m_bbox.min.y, m_bbox.max.y);
     }
+  }
+
+  if (m_segments.size() == 0) {
+    return;
   }
 
   // See https://pomax.github.io/bezierinfo/#tracing
@@ -306,6 +313,9 @@ std::vector<glm::vec2> Outline::sample(size_t n) const {
 }
 
 std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {
+  if (m_segments.size() == 0) {
+    return {};
+  }
   std::vector<glm::vec2> samples(ts.size());
   size_t j_best = 0;
   for (size_t i = 0; i < samples.size(); i++) {

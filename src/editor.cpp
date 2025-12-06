@@ -494,9 +494,16 @@ void LissajousComponent::renderOpenGL() {
     if (m_outline == nullptr) {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
-      glTexSubImage1D(GL_TEXTURE_1D, 0, 0,
-                      static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
-                      m_samples.data());
+      if (m_samples.size() > 0) {
+        // Size is zero when sampling a space since that has no segments
+        glTexSubImage1D(GL_TEXTURE_1D, 0, 0,
+                        static_cast<GLsizei>(m_samples.size()), GL_RG, GL_FLOAT,
+                        m_samples.data());
+      } else {
+        std::vector<glm::vec2> zeros(s_num_outline_samples);
+        glTexSubImage1D(GL_TEXTURE_1D, 0, 0, static_cast<GLsizei>(zeros.size()),
+                        GL_RG, GL_FLOAT, zeros.data());
+      }
       m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
       m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
                                   m_outline_glyph_corner);
@@ -543,6 +550,13 @@ void LissajousComponent::onContentChanged() {
     }
     // Get glyph dimensions for last character in outline
     auto char_code = static_cast<FT_ULong>(m_content.back());
+    // fmt::println("char code is {}", char_code);
+    // if (char_code == 32) {
+    //   fmt::println("replacing!");
+    //   // Hack for making spaces seem slightly more reasonable, replace with
+    //   // 'x'
+    //   char_code = static_cast<FT_ULong>('x');
+    // }
     if (auto err = FT_Load_Char(m_face, char_code, FT_LOAD_DEFAULT)) {
       throw FreetypeError(FT_Error_String(err));
     }
