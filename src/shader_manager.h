@@ -13,7 +13,7 @@ class ShaderManager : public efsw::FileWatchListener {
 public:
   using ProgramId = std::string;
   using ShaderName = std::string;
-  using Uniform = std::variant<size_t, float, glm::vec2, glm::mat4>;
+  using Uniform = std::variant<int, size_t, float, glm::vec2, glm::mat4>;
 
   ShaderManager(juce::OpenGLContext& context);
   bool addProgram(const ProgramId& id, const ShaderName& vert_name,

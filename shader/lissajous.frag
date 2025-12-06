@@ -6,6 +6,8 @@
 uniform float u_time;
 // Samples of the outline, rg -> xy
 uniform sampler1D u_samples;
+// Whether the outline is valid
+uniform bool u_has_outline;
 
 in vec2 texcoord;
 out vec4 frag_color;

@@ -431,6 +431,9 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  using namespace juce::gl;
+  m_shader_manager.useProgram(m_program_id);
+  m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -499,17 +502,24 @@ void LissajousComponent::renderOpenGL() {
 
 void LissajousComponent::onContentChanged() {
   fmt::println(R"(m_content = "{}")", m_content);
-  m_outline.reset(new Outline(m_content, m_face, s_pixel_height));
+  m_outline.reset(m_content.size() > 0
+                      ? new Outline(m_content, m_face, s_pixel_height)
+                      : nullptr);
   // TODO send outline to processor, for more sampling and wavetable building
-  m_samples = m_outline->sample(s_num_outline_samples);
-  auto& bbox = m_outline->bbox();
-  for (auto& sample : m_samples) {
-    sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
-    sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
+  if (m_outline) {
+    m_samples = m_outline->sample(s_num_outline_samples);
+    auto& bbox = m_outline->bbox();
+    for (auto& sample : m_samples) {
+      sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
+      sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
+    }
+    m_values = {
+        {{0.1f, 0.2f}, {0.2f, 0.4f}, {0.3f, 0.6f}, {0.5f, 0.5f}, {0.7f, 0.3f}}};
+    m_shader_manager.setUniform(m_program_id, "u_has_outline", true);
+    m_dirty = true;
+  } else {
+    m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
   }
-  m_values = {
-      {{0.1f, 0.2f}, {0.2f, 0.4f}, {0.3f, 0.6f}, {0.5f, 0.5f}, {0.7f, 0.3f}}};
-  m_dirty = true;
 }
 
 float LissajousComponent::getTimeUniform() {
