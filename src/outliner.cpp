@@ -6,8 +6,6 @@
 #include <sstream>
 #include <string>
 
-namespace glynth {
-
 // Segment
 Segment::Segment(FT_Vector p0) : m_order(0) {
   m_points.emplace_back(static_cast<float>(p0.x) / 64,
@@ -326,5 +324,3 @@ std::string Outline::svg_str() const {
   }
   return ss.str();
 }
-
-} // namespace glynth

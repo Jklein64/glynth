@@ -7,8 +7,6 @@
 #include <string_view>
 #include <vector>
 
-namespace glynth {
-
 struct Segment {
   friend class Outliner;
   friend class Outline;
@@ -54,5 +52,3 @@ private:
   std::vector<float> m_parameters;
   std::vector<float> m_distances;
 };
-
-} // namespace glynth
