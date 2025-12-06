@@ -4,18 +4,19 @@
 
 // Zero means not focused
 uniform float u_time;
-uniform sampler1D u_outline;
-uniform int u_num_outline_samples;
+// Samples of the outline, rg -> xy
+uniform sampler1D u_samples;
 
 in vec2 texcoord;
 out vec4 frag_color;
 
 void main() {
-    int texel = int(texcoord.x * u_num_outline_samples);
-    texel = min(texel, u_num_outline_samples - 1);
-    vec2 sample = texelFetch(u_outline, texel, 0).rg;
+    int num_samples = textureSize(u_samples, 0);
+    int texel = int(texcoord.x * num_samples);
+    texel = min(texel, num_samples - 1);
+    vec2 sample = texelFetch(u_samples, texel, 0).rg;
     float value = texcoord.y > 0.5 ? sample.y : sample.x;
-    frag_color = vec4(0.3 + value * 0.7,0, 0, 1);
+    frag_color = vec4(value, 0, 0, 1);
 
     // if (u_time == 0) {
     //     frag_color = vec4(1, texcoord, 1);

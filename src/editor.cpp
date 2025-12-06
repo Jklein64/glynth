@@ -404,7 +404,7 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id)
     : RectComponent(editor_ref, program_id) {
   m_face = m_font_manager.getFace("SplineSansMono-Medium");
-  m_outline_samples.resize(s_num_outline_samples);
+  m_samples.resize(s_num_outline_samples);
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
   setMouseClickGrabsKeyboardFocus(true);
@@ -420,9 +420,8 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   // Disable byte-alignment restriction
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   // Store x in red component and y in green component
-  glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
-               static_cast<GLsizei>(m_outline_samples.size()), 0, GL_RG,
-               GL_FLOAT, m_outline_samples.data());
+  glTexImage1D(GL_TEXTURE_1D, 0, GL_RG, static_cast<GLsizei>(m_samples.size()),
+               0, GL_RG, GL_FLOAT, m_samples.data());
   // glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
   // static_cast<GLsizei>(m_values.size()),
   //              0, GL_RG, GL_FLOAT, m_values.data());
@@ -432,9 +431,6 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  m_shader_manager.useProgram(m_program_id);
-  m_shader_manager.setUniform(m_program_id, "u_num_outline_samples",
-                              s_num_outline_samples);
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -494,8 +490,8 @@ void LissajousComponent::renderOpenGL() {
     // static_cast<GLsizei>(m_values.size()),
     //              0, GL_RG, GL_FLOAT, m_values.data());
     glTexImage1D(GL_TEXTURE_1D, 0, GL_RG,
-                 static_cast<GLsizei>(m_outline_samples.size()), 0, GL_RG,
-                 GL_FLOAT, m_outline_samples.data());
+                 static_cast<GLsizei>(m_samples.size()), 0, GL_RG, GL_FLOAT,
+                 m_samples.data());
     m_dirty = false;
   }
   RectComponent::renderOpenGL();
@@ -505,9 +501,9 @@ void LissajousComponent::onContentChanged() {
   fmt::println(R"(m_content = "{}")", m_content);
   m_outline.reset(new Outline(m_content, m_face, s_pixel_height));
   // TODO send outline to processor, for more sampling and wavetable building
-  m_outline_samples = m_outline->sample(s_num_outline_samples);
+  m_samples = m_outline->sample(s_num_outline_samples);
   auto& bbox = m_outline->bbox();
-  for (auto& sample : m_outline_samples) {
+  for (auto& sample : m_samples) {
     sample.x = (sample.x - bbox.min.x) / (bbox.max.x - bbox.min.x);
     sample.y = (sample.y - bbox.min.y) / (bbox.max.y - bbox.min.y);
   }

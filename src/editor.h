@@ -184,7 +184,7 @@ private:
   std::string m_content = "";
   FT_Face m_face;
   std::unique_ptr<Outline> m_outline;
-  std::vector<glm::vec2> m_outline_samples;
+  std::vector<glm::vec2> m_samples;
   GLuint m_texture;
   // Dirty flag since texture cannot be updated in the callback thread
   std::atomic<bool> m_dirty = false;
