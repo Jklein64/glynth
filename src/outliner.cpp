@@ -295,26 +295,15 @@ const std::vector<Segment>& Outline::segments() const { return m_segments; }
 
 const BoundingBox& Outline::bbox() const { return m_bbox; }
 
-glm::vec2 Outline::sample(float t) const {
-  assert(0 <= t && t < 1);
-  float total_length = 0.0f;
-  for (auto&& segment : m_segments) {
-    total_length += segment.length();
+std::vector<glm::vec2> Outline::sample(size_t n) const {
+  std::vector<glm::vec2> samples(n);
+  std::vector<float> ts(n);
+  for (size_t i = 0; i < n; i++) {
+    float t = static_cast<float>(i) / (n - 1);
+    // Clamp to within [0, 1) to ensure index is always valid
+    ts[i] = std::clamp(t, 0.0f, std::nextafterf(1.0f, 0.0f));
   }
-  // Find the i such that distances[i] = t * total_length
-  size_t i_best = 0;
-  float v_best = std::numeric_limits<float>::infinity();
-  for (size_t i = 0; i < m_num_param_samples; i++) {
-    float v = std::abs(m_distances[i] - t * total_length);
-    if (v < v_best) {
-      i_best = i;
-      v_best = v;
-    }
-  }
-  // Do the naive sampling with t = parameters[i_best]
-  float j_decimal = m_parameters[i_best] * m_segments.size();
-  size_t j = static_cast<size_t>(j_decimal);
-  return m_segments[j].sample(j_decimal - j);
+  return sample(ts);
 }
 
 std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {

@@ -41,8 +41,7 @@ public:
   Outline(std::vector<Segment>&& segments, BoundingBox bbox);
   const std::vector<Segment>& segments() const;
   const BoundingBox& bbox() const;
-  // t must be within [0, 1)
-  glm::vec2 sample(float t) const;
+  std::vector<glm::vec2> sample(size_t n) const;
   std::vector<glm::vec2> sample(std::span<float> t) const;
   std::string svg_str() const;
 
