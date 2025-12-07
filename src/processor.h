@@ -156,8 +156,8 @@ struct SynthVoice {
   void configure(int note_number, double sample_rate);
   inline double sample();
   void release();
-  void setAttack(float attack_ms);
-  void setDecay(float decay_ms);
+  void setAttack(float attack_ms, double sample_rate);
+  void setDecay(float decay_ms, double sample_rate);
   inline bool isActive() { return m_state == State::Active; }
   inline bool isInactive() { return m_state == State::Inactive; }
   inline bool isDecaying() { return m_state == State::Decay; }
@@ -186,12 +186,16 @@ private:
   // Current state
   State m_state = State::Inactive;
 };
-class Synth : public SubProcessor {
+class Synth : public SubProcessor,
+              public juce::AudioProcessorParameter::Listener {
 public:
-  Synth(GlynthProcessor& processor_ref);
+  Synth(GlynthProcessor& processor_ref, juce::AudioParameterFloat& attack_ms,
+        juce::AudioParameterFloat& decay_ms);
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
+  void parameterValueChanged(int index, float new_value) override;
+  void parameterGestureChanged(int index, bool gesture_is_starting) override;
 
 private:
   std::optional<size_t> getOldestVoiceWithState(SynthVoice::State state);
