@@ -41,8 +41,8 @@ GlynthProcessor::GlynthProcessor()
   addParameter(&m_attack_ms);
   addParameter(&m_decay_ms);
 
-  m_processors.emplace_back(new NoiseGenerator(*this));
-  // m_processors.emplace_back(new Synth(*this));
+  // m_processors.emplace_back(new NoiseGenerator(*this));
+  m_processors.emplace_back(new Synth(*this));
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
@@ -259,9 +259,9 @@ void HighPassFilter::configure(float freq, float res) {
 }
 
 Synth::Synth(GlynthProcessor& processor_ref) : SubProcessor(processor_ref) {
-  m_voices.emplace_back();
-  m_voices.emplace_back();
-  m_voices.emplace_back();
+  for (size_t i = 0; i < 16; i++) {
+    m_voices.emplace_back();
+  }
 }
 
 void Synth::prepareToPlay(double sample_rate, int) {
@@ -283,21 +283,14 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       if (msg.isNoteOn()) {
         auto note = msg.getNoteNumber();
         // Use first inactive voice, or voice with lowest ID if all are active
-        size_t min_id_idx = 0;
-        bool handled = false;
-        for (size_t k = 0; k < m_voices.size(); k++) {
-          if (!m_voices[k].active) {
-            // Found an inactive voice to use
-            m_voices[k].configure(note, m_sample_rate);
-            handled = true;
-            break;
-          } else if (m_voices[k].id < m_voices[min_id_idx].id) {
-            min_id_idx = k;
-          }
-        }
-        if (!handled) {
-          // Use voice with lowest ID
-          m_voices[min_id_idx].configure(note, m_sample_rate);
+        std::optional<size_t> idx;
+        if ((idx = getOldestVoiceWithState(SynthVoice::State::Inactive))) {
+          m_voices[*idx].configure(note, m_sample_rate);
+        } else if ((idx = getOldestVoiceWithState(SynthVoice::State::Decay))) {
+          m_voices[*idx].configure(note, m_sample_rate);
+        } else {
+          idx = getOldestVoiceWithState(SynthVoice::State::Active);
+          m_voices[*idx].configure(note, m_sample_rate);
         }
       } else if (msg.isNoteOff()) {
         auto note = msg.getNoteNumber();
@@ -313,7 +306,7 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
 
     double sample = 0;
     for (auto& voice : m_voices) {
-      if (voice.active) {
+      if (!voice.isInactive()) {
         sample += voice.sample();
       }
     }
@@ -324,32 +317,59 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
   }
 }
 
-SynthVoice::SynthVoice() {
+std::optional<size_t> Synth::getOldestVoiceWithState(SynthVoice::State state) {
+  std::optional<size_t> best_i;
+  for (size_t i = 0; i < m_voices.size(); i++) {
+    if (m_voices[i].state == state) {
+      if (!best_i.has_value() || m_voices[i].id < m_voices[*best_i].id) {
+        best_i = i;
+      }
+    }
+  }
+  return best_i;
+}
+
+SynthVoice::SynthVoice(float decay_ms) : state(m_state), m_decay_ms(decay_ms) {
   id = s_next_id;
   s_next_id++;
 }
 
 void SynthVoice::configure(int note_number, double sample_rate) {
-  active = true;
   note = note_number;
+  // Calculated so that coef is -80dB after m_decay_ms milliseconds
+  m_decay_coeff = std::pow(10.0, -8 / (sample_rate * m_decay_ms / 1000));
+  m_state = State::Active;
+  m_gain = 1;
+  // Angle goes from 0 -> 1
   m_angle = 0;
   auto freq = juce::MidiMessage::getMidiNoteInHertz(note);
-  m_inc = freq / sample_rate * juce::MathConstants<double>::twoPi;
+  m_inc = freq / sample_rate;
   id = s_next_id;
   s_next_id++;
+
+  m_wavetable.reserve(512);
+  for (size_t i = 0; i < 512; i++) {
+    double t =
+        juce::MathConstants<double>::twoPi * static_cast<double>(i) / 512;
+    m_wavetable[i] = 0.1 * std::sin(t);
+  }
 }
 
 double SynthVoice::sample() {
-  double value = 0.1 * std::sin(m_angle);
+  size_t i = static_cast<size_t>(m_angle * 512) % 512;
+  double value = m_wavetable[i];
   m_angle += m_inc;
-  if (m_angle > juce::MathConstants<double>::twoPi) {
-    m_angle -= juce::MathConstants<double>::twoPi;
+  if (m_angle > 1) {
+    m_angle -= 1;
   }
-
+  if (m_state == State::Decay) {
+    value *= m_gain;
+    m_gain *= m_decay_coeff;
+    if (m_gain < 1e-8) {
+      m_state = State::Inactive;
+    }
+  }
   return value;
 }
 
-void SynthVoice::reset() {
-  active = false;
-  m_angle = 0;
-}
+void SynthVoice::reset() { m_state = State::Decay; }

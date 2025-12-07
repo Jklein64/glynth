@@ -150,18 +150,28 @@ private:
 };
 
 struct SynthVoice {
-  SynthVoice();
+  enum class State { Inactive, Active, Decay };
+
+  SynthVoice(float decay_ms = 300);
   void configure(int note_number, double sample_rate);
   double sample();
   void reset();
   int id;
   int note;
-  bool active;
+  inline bool isActive() { return m_state == State::Active; }
+  inline bool isInactive() { return m_state == State::Inactive; }
+  inline bool isDecaying() { return m_state == State::Decay; }
+  const State& state;
 
 private:
   inline static int s_next_id = 0;
+  std::vector<double> m_wavetable;
   double m_angle;
   double m_inc;
+  float m_decay_ms;
+  double m_decay_coeff;
+  double m_gain = 1;
+  State m_state = State::Inactive;
 };
 class Synth : public SubProcessor {
 public:
@@ -171,6 +181,8 @@ public:
                     juce::MidiBuffer& midi_messages) override;
 
 private:
+  std::optional<size_t> getOldestVoiceWithState(SynthVoice::State state);
+
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
 
