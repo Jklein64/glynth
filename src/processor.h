@@ -152,25 +152,38 @@ private:
 struct SynthVoice {
   enum class State { Inactive, Active, Decay };
 
-  SynthVoice(float decay_ms = 300);
+  SynthVoice(float attack_ms, float decay_ms);
   void configure(int note_number, double sample_rate);
-  double sample();
-  void reset();
-  int id;
-  int note;
+  inline double sample();
+  void release();
+  void setAttack(float attack_ms);
+  void setDecay(float decay_ms);
   inline bool isActive() { return m_state == State::Active; }
   inline bool isInactive() { return m_state == State::Inactive; }
   inline bool isDecaying() { return m_state == State::Decay; }
+  int id;
+  int note;
   const State& state;
 
 private:
   inline static int s_next_id = 0;
   std::vector<double> m_wavetable;
+  double m_sample_rate;
+  // Goes from 0 -> 1
   double m_angle;
+  // Increment to maintain desired frequency
   double m_inc;
+  // Envelope attack in milliseconds
+  float m_attack_ms;
+  // Envelope decay in milliseconds
   float m_decay_ms;
+  // Coefficient used to amplify gain
+  double m_attack_coeff;
+  // Coefficient used to attenuate gain
   double m_decay_coeff;
+  // Gain multiplier for output
   double m_gain = 1;
+  // Current state
   State m_state = State::Inactive;
 };
 class Synth : public SubProcessor {

@@ -260,7 +260,7 @@ void HighPassFilter::configure(float freq, float res) {
 
 Synth::Synth(GlynthProcessor& processor_ref) : SubProcessor(processor_ref) {
   for (size_t i = 0; i < 16; i++) {
-    m_voices.emplace_back();
+    m_voices.emplace_back(20, 500);
   }
 }
 
@@ -289,6 +289,7 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
         } else if ((idx = getOldestVoiceWithState(SynthVoice::State::Decay))) {
           m_voices[*idx].configure(note, m_sample_rate);
         } else {
+          // Can always steal from an active voice, so idx is never null
           idx = getOldestVoiceWithState(SynthVoice::State::Active);
           m_voices[*idx].configure(note, m_sample_rate);
         }
@@ -296,7 +297,7 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
         auto note = msg.getNoteNumber();
         for (auto& voice : m_voices) {
           if (voice.note == note) {
-            voice.reset();
+            voice.release();
           }
         }
       }
@@ -329,30 +330,31 @@ std::optional<size_t> Synth::getOldestVoiceWithState(SynthVoice::State state) {
   return best_i;
 }
 
-SynthVoice::SynthVoice(float decay_ms) : state(m_state), m_decay_ms(decay_ms) {
+SynthVoice::SynthVoice(float attack_ms, float decay_ms)
+    : state(m_state), m_attack_ms(attack_ms), m_decay_ms(decay_ms) {
   id = s_next_id;
   s_next_id++;
+  // Configure wavetable once
+  m_wavetable.reserve(512);
+  for (size_t i = 0; i < 512; i++) {
+    double t = static_cast<double>(i) / 512;
+    m_wavetable[i] = 0.1 * std::sin(t * juce::MathConstants<double>::twoPi);
+  }
 }
 
 void SynthVoice::configure(int note_number, double sample_rate) {
   note = note_number;
-  // Calculated so that coef is -80dB after m_decay_ms milliseconds
-  m_decay_coeff = std::pow(10.0, -8 / (sample_rate * m_decay_ms / 1000));
+  m_sample_rate = sample_rate;
+  setAttack(m_attack_ms);
+  setDecay(m_decay_ms);
+  m_gain = 1e-8;
   m_state = State::Active;
-  m_gain = 1;
   // Angle goes from 0 -> 1
   m_angle = 0;
   auto freq = juce::MidiMessage::getMidiNoteInHertz(note);
   m_inc = freq / sample_rate;
   id = s_next_id;
   s_next_id++;
-
-  m_wavetable.reserve(512);
-  for (size_t i = 0; i < 512; i++) {
-    double t =
-        juce::MathConstants<double>::twoPi * static_cast<double>(i) / 512;
-    m_wavetable[i] = 0.1 * std::sin(t);
-  }
 }
 
 double SynthVoice::sample() {
@@ -362,7 +364,10 @@ double SynthVoice::sample() {
   if (m_angle > 1) {
     m_angle -= 1;
   }
-  if (m_state == State::Decay) {
+  if (m_state == State::Active && m_gain < 1) {
+    value *= m_gain;
+    m_gain *= m_attack_coeff;
+  } else if (m_state == State::Decay) {
     value *= m_gain;
     m_gain *= m_decay_coeff;
     if (m_gain < 1e-8) {
@@ -372,4 +377,16 @@ double SynthVoice::sample() {
   return value;
 }
 
-void SynthVoice::reset() { m_state = State::Decay; }
+void SynthVoice::release() { m_state = State::Decay; }
+
+void SynthVoice::setAttack(float attack_ms) {
+  m_attack_ms = attack_ms;
+  // Calculated so that gain is 0dB (from -80) after m_attack_ms milliseconds
+  m_attack_coeff = std::pow(10.0, 8 / (m_sample_rate * m_attack_ms / 1000));
+}
+
+void SynthVoice::setDecay(float decay_ms) {
+  m_decay_ms = decay_ms;
+  // Calculated so that gain is -80dB after m_decay_ms milliseconds
+  m_decay_coeff = std::pow(10.0, -8 / (m_sample_rate * m_decay_ms / 1000));
+}
