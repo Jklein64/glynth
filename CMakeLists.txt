@@ -32,6 +32,11 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
     GIT_TAG master
 )
+FetchContent_Declare(
+    readerwriterqueue
+    GIT_REPOSITORY https://github.com/cameron314/readerwriterqueue.git
+    GIT_TAG v1.0.7
+)
 FetchContent_MakeAvailable(
     freetype
     fmt
@@ -39,6 +44,7 @@ FetchContent_MakeAvailable(
     libnpy
     juce
     efsw
+    readerwriterqueue
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -131,6 +137,7 @@ target_link_libraries_system(
         glm::glm
         efsw-static
         freetype
+        readerwriterqueue
 )
 
 add_executable(read src/read.cpp src/outliner.cpp)

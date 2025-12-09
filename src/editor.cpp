@@ -465,7 +465,10 @@ void LissajousComponent::focusGained(FocusChangeType) {
   m_last_change_time = std::chrono::high_resolution_clock::now();
 }
 
-void LissajousComponent::focusLost(FocusChangeType) { m_focused = false; }
+void LissajousComponent::focusLost(FocusChangeType) {
+  m_processor_ref.updateOutline(m_outline);
+  m_focused = false;
+}
 
 bool LissajousComponent::keyPressed(const juce::KeyPress& key) {
   auto key_char = key.getTextCharacter();

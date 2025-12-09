@@ -74,6 +74,12 @@ bool GlynthProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 
 void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                    juce::MidiBuffer& midi_messages) {
+  // Update the outline if possible
+  if (m_outline_tmp.has_value() && m_outline != m_outline_tmp) {
+    fmt::println(Logger::file, "Swapped outline in processBlock");
+    m_outline = m_outline_tmp;
+  }
+  // Normal process block
   juce::ScopedNoDenormals noDenormals;
   for (int ch = 0; ch < getTotalNumOutputChannels(); ch++) {
     // Clear unused output buffers to avoid garbage data blasting speakers
@@ -123,6 +129,12 @@ juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
   }
   // Should be unreachable
   throw GlynthError(fmt::format(R"(No parameter found with id "{}")", id));
+}
+
+void GlynthProcessor::updateOutline(std::optional<Outline> outline) {
+  fmt::println(Logger::file, "Updating outline in processor");
+  // Makes a copy
+  m_outline_tmp = outline;
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

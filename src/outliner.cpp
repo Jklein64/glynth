@@ -3,6 +3,7 @@
 
 #include <freetype/ftbbox.h>
 #include <freetype/ftoutln.h>
+#include <glm/gtc/epsilon.hpp>
 #include <juce_core/juce_core.h>
 #include <optional>
 #include <sstream>
@@ -60,6 +61,20 @@ Segment::Segment(FT_Vector p0, FT_Vector p1, FT_Vector p2, FT_Vector p3)
     m_length += glm::length(curr - prev);
     prev = curr;
   }
+}
+
+bool Segment::operator==(const Segment& other) const {
+  if (m_order != other.m_order) {
+    return false;
+  } else {
+    for (size_t i = 0; i < m_points.size(); i++) {
+      if (!glm::all(glm::epsilonEqual(m_points[i], other.m_points[i],
+                                      std::numeric_limits<float>::epsilon()))) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 float Segment::length(float t) const {
@@ -224,7 +239,7 @@ FT_Outline_Funcs funcs = {
 
 Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
                  bool invert_y, size_t num_param_samples)
-    : m_num_param_samples(num_param_samples) {
+    : m_text(text), m_num_param_samples(num_param_samples) {
   FT_Error err;
   FT_Vector pen{.x = 0, .y = 0};
   UserData user = {
@@ -294,6 +309,14 @@ Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
     // Add length of the part of segment j included by parameter
     float j_whole = static_cast<float>(j);
     m_distances[i] += m_segments[j].length(j_decimal - j_whole);
+  }
+}
+
+bool Outline::operator==(const Outline& other) const {
+  if (m_text == other.m_text) {
+    return true;
+  } else {
+    return m_segments == other.m_segments;
   }
 }
 

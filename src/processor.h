@@ -1,7 +1,10 @@
 #pragma once
 
+#include "outliner.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <random>
+#include <readerwriterqueue.h>
 
 class GlynthProcessor;
 class SubProcessor {
@@ -55,6 +58,8 @@ public:
   void timerCallback() override;
   // All parameters are float values
   juce::AudioParameterFloat& getParamById(std::string_view id);
+  // Update won't be processed until the start of the next audio block
+  void updateOutline(std::optional<Outline> outline);
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
@@ -67,6 +72,13 @@ private:
   juce::AudioParameterFloat& m_attack_ms;
   juce::AudioParameterFloat& m_decay_ms;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
+
+  // Remains consistent within a block
+  std::optional<Outline> m_outline;
+  // Might change in the middle of a block
+  std::optional<Outline> m_outline_tmp;
+  // Lock-free queue for receiving outlines from editor
+  // moodycamel::ReaderWriterQueue<std::unique_ptr<Outline>> m_outline_queue{8};
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };
