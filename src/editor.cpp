@@ -507,7 +507,7 @@ void LissajousComponent::renderOpenGL() {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_1D, m_texture);
   if (m_dirty) {
-    if (m_outline == nullptr) {
+    if (!m_outline.has_value()) {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
       if (m_samples.size() > 0) {
@@ -533,9 +533,11 @@ void LissajousComponent::renderOpenGL() {
 
 void LissajousComponent::onContentChanged() {
   fmt::println(R"(m_content = "{}")", m_content);
-  m_outline.reset(m_content != ""
-                      ? new Outline(m_content, m_face, s_pixel_height)
-                      : nullptr);
+  if (m_content == "") {
+    m_outline = std::nullopt;
+  } else {
+    m_outline.emplace(m_content, m_face, s_pixel_height);
+  }
   // TODO send outline to processor, for more sampling and wavetable building
   auto bounds = getBounds();
   auto w_bounds = static_cast<float>(bounds.getWidth());

@@ -182,7 +182,7 @@ private:
   std::string m_content = "Glynth";
   FT_Face m_face;
   // Null when the outline shouldn't be displayed
-  std::unique_ptr<Outline> m_outline;
+  std::optional<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
   size_t m_num_samples;
   // Bottom left corner of the last glyph
