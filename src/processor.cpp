@@ -393,7 +393,8 @@ double SynthVoice::sample() {
   }
   if (m_state == State::Active && m_gain < 1) {
     value *= m_gain;
-    m_gain *= m_attack_coeff;
+    // Equivalent to g_k = 1 - c^k
+    m_gain = 1 - m_attack_coeff * (1 - m_gain);
   } else if (m_state == State::Decay) {
     value *= m_gain;
     m_gain *= m_decay_coeff;
@@ -408,8 +409,8 @@ void SynthVoice::release() { m_state = State::Decay; }
 
 void SynthVoice::setAttack(float attack_ms, double sample_rate) {
   m_attack_ms = attack_ms;
-  // Calculated so that gain is 0dB (from -80) after m_attack_ms milliseconds
-  m_attack_coeff = std::pow(10.0, 8 / (sample_rate * m_attack_ms / 1000));
+  // Calculated so that gain is -3dB after m_attack_ms milliseconds
+  m_attack_coeff = std::pow(10.0, -3 / (sample_rate * m_attack_ms / 1000));
 }
 
 void SynthVoice::setDecay(float decay_ms, double sample_rate) {
