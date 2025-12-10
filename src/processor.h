@@ -228,9 +228,9 @@ private:
   // Coefficient used to attenuate gain
   float m_decay_coeff;
   // Gain multiplier for output
-  float m_gain = 1;
+  std::array<float, 2> m_gain = {1, 1};
   // Amount of old wavetable to mix with new
-  float m_crossfade = 0;
+  std::array<float, 2> m_crossfade = {0, 0};
   // Current state
   State m_state = State::Inactive;
 };

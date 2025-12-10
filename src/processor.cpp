@@ -415,8 +415,8 @@ void SynthVoice::configure(int note_number, double sample_rate) {
   m_sample_rate = sample_rate;
   setAttack(m_attack_ms, sample_rate);
   setDecay(m_decay_ms, sample_rate);
-  m_gain = 1e-8f;
-  m_crossfade = 0;
+  m_gain = {1e-8f, 1e-8f};
+  m_crossfade = {0, 0};
   m_state = State::Active;
   // Angle goes from 0 -> 1
   m_angle = {0, 0};
@@ -431,24 +431,25 @@ float SynthVoice::sample(size_t channel) {
   double i_float = m_angle[channel] * static_cast<double>(n);
   size_t i = static_cast<size_t>(i_float) % n;
   float value = m_wavetable_ref.sample(channel, i);
-  if (m_crossfade > 0) {
+  float t = m_crossfade[channel];
+  if (t > 0) {
     float old_value = m_wavetable_ref.sample(channel, i, true);
-    value = old_value * sqrt(m_crossfade) + sqrt(1 - m_crossfade) * value;
-    // Works well enough. /2 since this is called per-channel
-    m_crossfade -= 1 / static_cast<float>(m_sample_rate) / 2;
+    value = old_value * sqrt(t) + sqrt(1 - t) * value;
+    // Works well enough, though it is a hardcoded value
+    m_crossfade[channel] -= 1 / static_cast<float>(m_sample_rate);
   }
   m_angle[channel] += m_inc;
   if (m_angle[channel] > 1) {
     m_angle[channel] -= 1;
   }
-  if (m_state == State::Active && m_gain < 1) {
-    value *= m_gain;
+  if (m_state == State::Active && m_gain[channel] < 1) {
+    value *= m_gain[channel];
     // Equivalent to g_k = 1 - c^k
-    m_gain = 1 - m_attack_coeff * (1 - m_gain);
+    m_gain[channel] = 1 - m_attack_coeff * (1 - m_gain[channel]);
   } else if (m_state == State::Decay) {
-    value *= m_gain;
-    m_gain *= m_decay_coeff;
-    if (m_gain < 1e-8) {
+    value *= m_gain[channel];
+    m_gain[channel] *= m_decay_coeff;
+    if (m_gain[channel] < 1e-8) {
       m_state = State::Inactive;
     }
   }
@@ -457,7 +458,7 @@ float SynthVoice::sample(size_t channel) {
 
 void SynthVoice::release() { m_state = State::Decay; }
 
-void SynthVoice::crossfade() { m_crossfade = 1; }
+void SynthVoice::crossfade() { m_crossfade = {1, 1}; }
 
 void SynthVoice::setAttack(float attack_ms, double sample_rate) {
   m_attack_ms = attack_ms;
