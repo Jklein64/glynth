@@ -322,6 +322,8 @@ bool Outline::operator==(const Outline& other) const {
 
 const std::span<const Segment> Outline::segments() const { return m_segments; }
 
+std::string_view Outline::text() const { return m_text; }
+
 const BoundingBox& Outline::bbox() const { return m_bbox; }
 
 std::vector<glm::vec2> Outline::sample(size_t n) const {

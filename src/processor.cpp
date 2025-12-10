@@ -77,12 +77,6 @@ bool GlynthProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 
 void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                    juce::MidiBuffer& midi_messages) {
-  // Update the outline if possible
-  if (m_outline_tmp.has_value() && m_outline != m_outline_tmp) {
-    fmt::println(Logger::file, "Swapped outline in processBlock");
-    m_outline = m_outline_tmp;
-    m_synth.makeWavetable(m_outline.value());
-  }
   // Normal process block
   juce::ScopedNoDenormals noDenormals;
   for (int ch = 0; ch < getTotalNumOutputChannels(); ch++) {
@@ -121,7 +115,11 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
   m_lpf_res = stream.readFloat();
 }
 
-void GlynthProcessor::timerCallback() { fflush(Logger::file); }
+void GlynthProcessor::timerCallback() {
+#ifdef GLYNTH_LOG_TO_FILE
+  fflush(Logger::file);
+#endif
+}
 
 juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
   auto params = {&m_hpf_freq, &m_hpf_res,   &m_lpf_freq,
@@ -138,7 +136,29 @@ juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
 void GlynthProcessor::updateOutline(std::optional<Outline> outline) {
   fmt::println(Logger::file, "Updating outline in processor");
   // Makes a copy
-  m_outline_tmp = outline;
+  if (outline) {
+    size_t n = Wavetable::s_num_samples;
+    auto samples = outline->sample(n);
+    auto bbox = outline->bbox();
+    float x_mean = 0;
+    float y_mean = 0;
+    std::array<float, Wavetable::s_num_samples> ch0;
+    std::array<float, Wavetable::s_num_samples> ch1;
+    for (size_t i = 0; i < n; i++) {
+      ch0[i] = (samples[i].x - bbox.min.x) / bbox.width() * 2;
+      ch1[i] = (samples[i].y - bbox.min.y) / bbox.height() * 2;
+      x_mean += ch0[i];
+      y_mean += ch1[i];
+    }
+    x_mean /= static_cast<float>(n);
+    y_mean /= static_cast<float>(n);
+    // Subtract the mean so there's no DC component
+    for (size_t i = 0; i < n; i++) {
+      ch0[i] -= x_mean;
+      ch1[i] -= y_mean;
+    }
+    m_synth.updateWavetable(ch0, ch1);
+  }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
@@ -280,9 +300,6 @@ Synth::Synth(GlynthProcessor& processor_ref,
     : SubProcessor(processor_ref) {
   attack_ms.addListener(this);
   decay_ms.addListener(this);
-  for (size_t ch = 0; ch < m_wavetable.size(); ch++) {
-    m_wavetable[ch].resize(512, 0);
-  }
   for (size_t i = 0; i < 16; i++) {
     m_voices.emplace_back(m_wavetable, attack_ms.get(), decay_ms.get());
   }
@@ -374,30 +391,16 @@ std::optional<size_t> Synth::getOldestVoiceWithState(SynthVoice::State state) {
   return best_i;
 }
 
-void Synth::makeWavetable(const Outline& outline) {
-  size_t n = m_wavetable[0].size();
-  auto samples = outline.sample(n);
-  auto bbox = outline.bbox();
-  float x_mean = 0;
-  float y_mean = 0;
-  for (size_t i = 0; i < n; i++) {
-    m_wavetable[0][i] = (samples[i].x - bbox.min.x) / bbox.width() * 2;
-    m_wavetable[1][i] = (samples[i].y - bbox.min.y) / bbox.height() * 2;
-    x_mean += m_wavetable[0][i];
-    y_mean += m_wavetable[1][i];
-  }
-  x_mean /= static_cast<float>(n);
-  y_mean /= static_cast<float>(n);
-  // Subtract the mean so there's no DC component
-  for (size_t i = 0; i < n; i++) {
-    m_wavetable[0][i] -= x_mean;
-    m_wavetable[1][i] -= y_mean;
-  }
-  fmt::println(Logger::file, "Updated wavetable");
+void Synth::updateWavetable(std::span<float, Wavetable::s_num_samples> ch0,
+                            std::span<float, Wavetable::s_num_samples> ch1) {
+  m_wavetable.ch0_old = m_wavetable.ch0;
+  std::copy(ch0.begin(), ch0.end(), m_wavetable.ch0.begin());
+  m_wavetable.ch1_old = m_wavetable.ch1;
+  std::copy(ch1.begin(), ch1.end(), m_wavetable.ch1.begin());
 }
 
-SynthVoice::SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref,
-                       float attack_ms, float decay_ms)
+SynthVoice::SynthVoice(Wavetable& wavetable_ref, float attack_ms,
+                       float decay_ms)
     : state(m_state), m_wavetable_ref(wavetable_ref), m_attack_ms(attack_ms),
       m_decay_ms(decay_ms) {
   id = s_next_id;
@@ -420,9 +423,9 @@ void SynthVoice::configure(int note_number, double sample_rate) {
 }
 
 float SynthVoice::sample(size_t channel) {
-  size_t n = m_wavetable_ref[0].size();
+  size_t n = Wavetable::s_num_samples;
   size_t i = static_cast<size_t>(m_angle[channel] * n) % n;
-  float value = m_wavetable_ref[channel][i];
+  float value = m_wavetable_ref.channel(channel)[i];
   m_angle[channel] += m_inc;
   if (m_angle[channel] > 1) {
     m_angle[channel] -= 1;

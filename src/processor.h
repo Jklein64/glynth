@@ -1,5 +1,6 @@
 #pragma once
 
+#include "error.h"
 #include "outliner.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -76,11 +77,8 @@ private:
 
   Synth& m_synth;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
-
-  // Remains consistent within a block
-  std::optional<Outline> m_outline;
   // Might change in the middle of a block
-  std::optional<Outline> m_outline_tmp;
+  // std::optional<Outline> m_outline_tmp;
   // Lock-free queue for receiving outlines from editor
   // moodycamel::ReaderWriterQueue<std::unique_ptr<Outline>> m_outline_queue{8};
 
@@ -165,11 +163,40 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };
 
+struct Wavetable {
+  static constexpr size_t s_num_samples = 512;
+
+  std::array<float, s_num_samples> ch0;
+  std::array<float, s_num_samples> ch1;
+  // For cross-fading
+  std::array<float, s_num_samples> ch0_old;
+  std::array<float, s_num_samples> ch1_old;
+
+  inline std::span<float, s_num_samples> channel(size_t ch, bool old = false) {
+    if (ch == 0 && old == false) {
+      return ch0;
+    } else if (ch == 1 && old == false) {
+      return ch1;
+    } else if (ch == 0 && old == true) {
+      return ch0_old;
+    } else if (ch == 1 && old == true) {
+      return ch1_old;
+    } else {
+      throw GlynthError("Bad channel index");
+    }
+  }
+
+  template <typename Index>
+  inline float sample(size_t ch, Index i, bool old = false) {
+    return this->channel(ch, old)[static_cast<size_t>(i)];
+  }
+};
+
 struct SynthVoice {
   enum class State { Inactive, Active, Decay };
 
-  SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref, float attack_ms,
-             float decay_ms);
+  SynthVoice(Wavetable& wavetable_ref, float attack_ms, float decay_ms);
+
   void configure(int note_number, double sample_rate);
   inline float sample(size_t channel);
   void release();
@@ -184,7 +211,7 @@ struct SynthVoice {
 
 private:
   inline static int s_next_id = 0;
-  std::array<std::vector<float>, 2>& m_wavetable_ref;
+  Wavetable& m_wavetable_ref;
   // std::vector<double> m_wavetable;
   double m_sample_rate;
   // Goes from 0 -> 1
@@ -215,12 +242,13 @@ public:
                     juce::MidiBuffer& midi_messages) override;
   void parameterValueChanged(int index, float new_value) override;
   void parameterGestureChanged(int index, bool gesture_is_starting) override;
-  void makeWavetable(const Outline& outline);
+  void updateWavetable(std::span<float, Wavetable::s_num_samples> ch0,
+                       std::span<float, Wavetable::s_num_samples> ch1);
 
 private:
   std::optional<size_t> getOldestVoiceWithState(SynthVoice::State state);
   // Stereo wavetable referenced by all voices
-  std::array<std::vector<float>, 2> m_wavetable;
+  Wavetable m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
   float m_gain = 0.1f;
