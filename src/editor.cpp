@@ -30,13 +30,11 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_font_manager.buildBitmaps("SplineSansMono-Bold", 20);
   m_font_manager.buildBitmaps("SplineSansMono-Medium", 10);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
-  m_shader_manager.addProgram("rect", "rect", "rect");
   m_shader_manager.addProgram("knob", "rect", "knob");
   m_shader_manager.addProgram("char", "rect", "char");
   m_shader_manager.addProgram("param", "rect", "param");
   m_shader_manager.addProgram("lissajous", "rect", "lissajous");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
-  auto rect = std::make_unique<RectComponent>(*this, "rect");
   auto lissajous = std::make_unique<LissajousComponent>(*this, "lissajous");
   std::string_view fmt_hz = "{: >7.1f}{}";
   std::string_view fmt_q = "{: >9.6f}{}";
@@ -55,8 +53,6 @@ void GlynthEditor::newOpenGLContextCreated() {
   lock.enter();
   addAndMakeVisible(bg.get());
   bg->setBounds(getLocalBounds());
-  addAndMakeVisible(rect.get());
-  rect->setBounds(100, 100, 100, 100);
   addAndMakeVisible(lissajous.get());
   lissajous->setBounds(66, 146, 708, 125);
   // Draw the grid of knobs
@@ -70,7 +66,6 @@ void GlynthEditor::newOpenGLContextCreated() {
   lock.exit();
 
   m_shader_components.push_back(std::move(bg));
-  m_shader_components.push_back(std::move(rect));
   m_shader_components.push_back(std::move(lissajous));
   for (auto& param : params) {
     m_shader_components.push_back(std::move(param));
