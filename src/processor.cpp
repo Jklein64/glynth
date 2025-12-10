@@ -397,6 +397,9 @@ void Synth::updateWavetable(std::span<float, Wavetable::s_num_samples> ch0,
   std::copy(ch0.begin(), ch0.end(), m_wavetable.ch0.begin());
   m_wavetable.ch1_old = m_wavetable.ch1;
   std::copy(ch1.begin(), ch1.end(), m_wavetable.ch1.begin());
+  for (auto& voice : m_voices) {
+    voice.crossfade();
+  }
 }
 
 SynthVoice::SynthVoice(Wavetable& wavetable_ref, float attack_ms,
@@ -425,7 +428,13 @@ void SynthVoice::configure(int note_number, double sample_rate) {
 float SynthVoice::sample(size_t channel) {
   size_t n = Wavetable::s_num_samples;
   size_t i = static_cast<size_t>(m_angle[channel] * n) % n;
-  float value = m_wavetable_ref.channel(channel)[i];
+  float value = m_wavetable_ref.sample(channel, i);
+  if (m_crossfade > 0) {
+    // Crossfade over the course of 0.5 seconds
+    float old_value = m_wavetable_ref.sample(channel, i, true);
+    value = old_value * m_crossfade + (1 - m_crossfade) * value;
+    m_crossfade -= 1 / (static_cast<float>(m_sample_rate) * 0.5f);
+  }
   m_angle[channel] += m_inc;
   if (m_angle[channel] > 1) {
     m_angle[channel] -= 1;
@@ -445,6 +454,8 @@ float SynthVoice::sample(size_t channel) {
 }
 
 void SynthVoice::release() { m_state = State::Decay; }
+
+void SynthVoice::crossfade() { m_crossfade = 1; }
 
 void SynthVoice::setAttack(float attack_ms, double sample_rate) {
   m_attack_ms = attack_ms;

@@ -200,6 +200,7 @@ struct SynthVoice {
   void configure(int note_number, double sample_rate);
   inline float sample(size_t channel);
   void release();
+  void crossfade();
   void setAttack(float attack_ms, double sample_rate);
   void setDecay(float decay_ms, double sample_rate);
   inline bool isActive() { return m_state == State::Active; }
@@ -228,6 +229,8 @@ private:
   float m_decay_coeff;
   // Gain multiplier for output
   float m_gain = 1;
+  // Amount of old wavetable to mix with new
+  float m_crossfade = 0;
   // Current state
   State m_state = State::Inactive;
 };
