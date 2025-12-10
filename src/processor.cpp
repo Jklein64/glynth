@@ -416,6 +416,7 @@ void SynthVoice::configure(int note_number, double sample_rate) {
   setAttack(m_attack_ms, sample_rate);
   setDecay(m_decay_ms, sample_rate);
   m_gain = 1e-8f;
+  m_crossfade = 0;
   m_state = State::Active;
   // Angle goes from 0 -> 1
   m_angle = {0, 0};
@@ -427,13 +428,14 @@ void SynthVoice::configure(int note_number, double sample_rate) {
 
 float SynthVoice::sample(size_t channel) {
   size_t n = Wavetable::s_num_samples;
-  size_t i = static_cast<size_t>(m_angle[channel] * n) % n;
+  double i_float = m_angle[channel] * static_cast<double>(n);
+  size_t i = static_cast<size_t>(i_float) % n;
   float value = m_wavetable_ref.sample(channel, i);
   if (m_crossfade > 0) {
-    // Crossfade over the course of 0.5 seconds
     float old_value = m_wavetable_ref.sample(channel, i, true);
-    value = old_value * m_crossfade + (1 - m_crossfade) * value;
-    m_crossfade -= 1 / (static_cast<float>(m_sample_rate) * 0.5f);
+    value = old_value * sqrt(m_crossfade) + sqrt(1 - m_crossfade) * value;
+    // Works well enough. /2 since this is called per-channel
+    m_crossfade -= 1 / static_cast<float>(m_sample_rate) / 2;
   }
   m_angle[channel] += m_inc;
   if (m_angle[channel] > 1) {
