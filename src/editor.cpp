@@ -443,7 +443,9 @@ void LissajousComponent::resized() {
   using namespace juce::gl;
   m_shader_manager.useProgram(m_program_id);
   onContentChanged();
-  m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
+  m_processor_ref.updateOutline(m_outline);
+  m_shader_manager.setUniform(m_program_id, "u_has_outline",
+                              m_outline.has_value());
   m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
                               m_outline_glyph_corner);
   m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",

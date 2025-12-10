@@ -30,7 +30,8 @@ GlynthProcessor::GlynthProcessor()
       m_decay_ms(*(new juce::AudioParameterFloat(
           juce::ParameterID("decay", 1), "Decay (Env)",
           juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
-          juce::AudioParameterFloatAttributes().withLabel("ms")))) {
+          juce::AudioParameterFloatAttributes().withLabel("ms")))),
+      m_synth(*(new Synth(*this, m_attack_ms, m_decay_ms))) {
 #ifdef GLYNTH_LOG_TO_FILE
   startTimerHz(1);
 #endif
@@ -42,7 +43,7 @@ GlynthProcessor::GlynthProcessor()
   addParameter(&m_decay_ms);
 
   // m_processors.emplace_back(new NoiseGenerator(*this));
-  m_processors.emplace_back(new Synth(*this, m_attack_ms, m_decay_ms));
+  m_processors.emplace_back(&m_synth);
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
@@ -276,8 +277,16 @@ Synth::Synth(GlynthProcessor& processor_ref,
     : SubProcessor(processor_ref) {
   attack_ms.addListener(this);
   decay_ms.addListener(this);
+  for (size_t ch = 0; ch < m_wavetable.size(); ch++) {
+    m_wavetable[ch].reserve(512);
+    for (size_t i = 0; i < 512; i++) {
+      float t = static_cast<float>(i) / 512;
+      // TODO handle with BLEP
+      m_wavetable[ch][i] = 0.1f * std::fmod(t, 1.0f);
+    }
+  }
   for (size_t i = 0; i < 16; i++) {
-    m_voices.emplace_back(attack_ms.get(), decay_ms.get());
+    m_voices.emplace_back(m_wavetable, attack_ms.get(), decay_ms.get());
   }
 }
 
@@ -322,14 +331,13 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       it++;
     }
 
-    double sample = 0;
-    for (auto& voice : m_voices) {
-      if (!voice.isInactive()) {
-        sample += voice.sample();
-      }
-    }
-
     for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
+      double sample = 0;
+      for (auto& voice : m_voices) {
+        if (!voice.isInactive()) {
+          sample += voice.sample(static_cast<size_t>(ch));
+        }
+      }
       buffer.setSample(ch, i, static_cast<float>(sample));
     }
   }
@@ -368,17 +376,12 @@ std::optional<size_t> Synth::getOldestVoiceWithState(SynthVoice::State state) {
   return best_i;
 }
 
-SynthVoice::SynthVoice(float attack_ms, float decay_ms)
-    : state(m_state), m_attack_ms(attack_ms), m_decay_ms(decay_ms) {
+SynthVoice::SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref,
+                       float attack_ms, float decay_ms)
+    : state(m_state), m_wavetable_ref(wavetable_ref), m_attack_ms(attack_ms),
+      m_decay_ms(decay_ms) {
   id = s_next_id;
   s_next_id++;
-  // Configure wavetable once
-  m_wavetable.reserve(512);
-  for (size_t i = 0; i < 512; i++) {
-    double t = static_cast<double>(i) / 512;
-    // TODO handle with BLEP
-    m_wavetable[i] = 0.1 * std::fmod(t, 1.0);
-  }
 }
 
 void SynthVoice::configure(int note_number, double sample_rate) {
@@ -386,7 +389,7 @@ void SynthVoice::configure(int note_number, double sample_rate) {
   m_sample_rate = sample_rate;
   setAttack(m_attack_ms, sample_rate);
   setDecay(m_decay_ms, sample_rate);
-  m_gain = 1e-8;
+  m_gain = 1e-8f;
   m_state = State::Active;
   // Angle goes from 0 -> 1
   m_angle = 0;
@@ -396,9 +399,9 @@ void SynthVoice::configure(int note_number, double sample_rate) {
   s_next_id++;
 }
 
-double SynthVoice::sample() {
+float SynthVoice::sample(size_t channel) {
   size_t i = static_cast<size_t>(m_angle * 512) % 512;
-  double value = m_wavetable[i];
+  float value = m_wavetable_ref[channel][i];
   m_angle += m_inc;
   if (m_angle > 1) {
     m_angle -= 1;
@@ -421,12 +424,14 @@ void SynthVoice::release() { m_state = State::Decay; }
 
 void SynthVoice::setAttack(float attack_ms, double sample_rate) {
   m_attack_ms = attack_ms;
+  float f = static_cast<float>(sample_rate);
   // Calculated so that gain is -3dB after m_attack_ms milliseconds
-  m_attack_coeff = std::pow(10.0, -3 / (sample_rate * m_attack_ms / 1000));
+  m_attack_coeff = std::pow(10.0f, -3 / (f * m_attack_ms / 1000));
 }
 
 void SynthVoice::setDecay(float decay_ms, double sample_rate) {
   m_decay_ms = decay_ms;
+  float f = static_cast<float>(sample_rate);
   // Calculated so that gain is -80dB after m_decay_ms milliseconds
-  m_decay_coeff = std::pow(10.0, -8 / (sample_rate * m_decay_ms / 1000));
+  m_decay_coeff = std::pow(10.0f, -8 / (f * m_decay_ms / 1000));
 }

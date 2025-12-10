@@ -23,6 +23,8 @@ protected:
   GlynthProcessor& m_processor_ref;
 };
 
+class Synth;
+
 class GlynthProcessor final : public juce::AudioProcessor, public juce::Timer {
 public:
   GlynthProcessor();
@@ -71,6 +73,8 @@ private:
   juce::AudioParameterFloat& m_lpf_res;
   juce::AudioParameterFloat& m_attack_ms;
   juce::AudioParameterFloat& m_decay_ms;
+
+  Synth& m_synth;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
 
   // Remains consistent within a block
@@ -164,9 +168,10 @@ private:
 struct SynthVoice {
   enum class State { Inactive, Active, Decay };
 
-  SynthVoice(float attack_ms, float decay_ms);
+  SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref, float attack_ms,
+             float decay_ms);
   void configure(int note_number, double sample_rate);
-  inline double sample();
+  inline float sample(size_t channel);
   void release();
   void setAttack(float attack_ms, double sample_rate);
   void setDecay(float decay_ms, double sample_rate);
@@ -179,7 +184,8 @@ struct SynthVoice {
 
 private:
   inline static int s_next_id = 0;
-  std::vector<double> m_wavetable;
+  std::array<std::vector<float>, 2>& m_wavetable_ref;
+  // std::vector<double> m_wavetable;
   double m_sample_rate;
   // Goes from 0 -> 1
   double m_angle;
@@ -190,11 +196,11 @@ private:
   // Envelope decay in milliseconds
   float m_decay_ms;
   // Coefficient used to amplify gain
-  double m_attack_coeff;
+  float m_attack_coeff;
   // Coefficient used to attenuate gain
-  double m_decay_coeff;
+  float m_decay_coeff;
   // Gain multiplier for output
-  double m_gain = 1;
+  float m_gain = 1;
   // Current state
   State m_state = State::Inactive;
 };
@@ -208,10 +214,12 @@ public:
                     juce::MidiBuffer& midi_messages) override;
   void parameterValueChanged(int index, float new_value) override;
   void parameterGestureChanged(int index, bool gesture_is_starting) override;
+  void makeWavetable(const Outline& outline);
 
 private:
   std::optional<size_t> getOldestVoiceWithState(SynthVoice::State state);
-
+  // Stereo wavetable referenced by all voices
+  std::array<std::vector<float>, 2> m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
 
