@@ -209,7 +209,6 @@ class Synth : public SubProcessor,
 public:
   Synth(GlynthProcessor& processor_ref, juce::AudioParameterFloat& attack_ms,
         juce::AudioParameterFloat& decay_ms);
-  ~Synth() override;
 
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
@@ -224,8 +223,6 @@ private:
   std::array<std::vector<float>, 2> m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
-
-  std::array<std::vector<float>, 2> tmp;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
 };

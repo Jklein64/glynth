@@ -282,27 +282,10 @@ Synth::Synth(GlynthProcessor& processor_ref,
   decay_ms.addListener(this);
   for (size_t ch = 0; ch < m_wavetable.size(); ch++) {
     m_wavetable[ch].resize(512, 0);
-    tmp[ch].reserve(44100 * 10);
-    // for (size_t i = 0; i < 512; i++) {
-    //   float t = static_cast<float>(i) / 512;
-    //   // TODO handle with BLEP
-    //   m_wavetable[ch][i] = 0.1f * std::fmod(t, 1.0f);
-    // }
   }
   for (size_t i = 0; i < 16; i++) {
     m_voices.emplace_back(m_wavetable, attack_ms.get(), decay_ms.get());
   }
-}
-
-Synth::~Synth() {
-  // fmt::println(Logger::file, "Saving file");
-  size_t n = tmp[0].size();
-  npy::tensor<float> tensor(std::vector<size_t>{2, n});
-  for (size_t i = 0; i < n; i++) {
-    tensor(0, i) = tmp[0][i];
-    tensor(1, i) = tmp[1][i];
-  }
-  tensor.save("/Users/jason/Developer/glynth/out/tensor.npy");
 }
 
 void Synth::prepareToPlay(double sample_rate, int) {
@@ -354,7 +337,6 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
         }
       }
       buffer.setSample(ch, i, static_cast<float>(sample));
-      tmp[ch].push_back(sample);
     }
   }
 }
@@ -411,11 +393,8 @@ void Synth::makeWavetable(const Outline& outline) {
   for (size_t i = 0; i < n; i++) {
     m_wavetable[0][i] -= x_mean;
     m_wavetable[1][i] -= y_mean;
-    // tensor(0, i) = m_wavetable[0][i];
-    // tensor(1, i) = m_wavetable[1][i];
   }
   fmt::println(Logger::file, "Updated wavetable");
-  // tensor.save("/Users/jason/Developer/glynth/out/tensor.npy");
 }
 
 SynthVoice::SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref,
