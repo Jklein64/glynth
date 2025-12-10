@@ -380,7 +380,7 @@ void ParameterComponent::renderOpenGL() {
 
 void ParameterComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::green);
-  g.drawRect(getLocalBounds());
+  // g.drawRect(getLocalBounds());
 }
 
 void ParameterComponent::resized() {
@@ -439,7 +439,7 @@ LissajousComponent::~LissajousComponent() {
 
 void LissajousComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::red);
-  g.drawRect(getLocalBounds());
+  // g.drawRect(getLocalBounds());
 }
 
 void LissajousComponent::resized() {
