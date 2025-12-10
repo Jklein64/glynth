@@ -312,7 +312,7 @@ Synth::Synth(GlynthProcessor& processor_ref,
     : SubProcessor(processor_ref) {
   attack_ms.addListener(this);
   decay_ms.addListener(this);
-  for (size_t i = 0; i < 16; i++) {
+  for (size_t i = 0; i < 32; i++) {
     m_voices.emplace_back(m_wavetable, attack_ms.get(), decay_ms.get());
   }
 }
