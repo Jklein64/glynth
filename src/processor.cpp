@@ -333,7 +333,7 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       float sample = 0;
       for (auto& voice : m_voices) {
         if (!voice.isInactive()) {
-          sample = voice.sample(static_cast<size_t>(ch));
+          sample += voice.sample(static_cast<size_t>(ch));
         }
       }
       buffer.setSample(ch, i, static_cast<float>(sample));
