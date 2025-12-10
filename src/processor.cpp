@@ -333,7 +333,7 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
       float sample = 0;
       for (auto& voice : m_voices) {
         if (!voice.isInactive()) {
-          sample += voice.sample(static_cast<size_t>(ch));
+          sample += m_gain * voice.sample(static_cast<size_t>(ch));
         }
       }
       buffer.setSample(ch, i, static_cast<float>(sample));
@@ -378,7 +378,6 @@ void Synth::makeWavetable(const Outline& outline) {
   size_t n = m_wavetable[0].size();
   auto samples = outline.sample(n);
   auto bbox = outline.bbox();
-  // npy::tensor<float> tensor(std::vector<size_t>{2, n});
   float x_mean = 0;
   float y_mean = 0;
   for (size_t i = 0; i < n; i++) {

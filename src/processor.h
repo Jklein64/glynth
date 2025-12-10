@@ -223,6 +223,7 @@ private:
   std::array<std::vector<float>, 2> m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
+  float m_gain = 0.1f;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
 };
