@@ -103,6 +103,7 @@ void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
   stream.writeFloat(m_hpf_res);
   stream.writeFloat(m_lpf_freq);
   stream.writeFloat(m_lpf_res);
+  stream.writeString(m_outline_text);
 }
 
 void GlynthProcessor::setStateInformation(const void* data, int size) {
@@ -113,6 +114,7 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
   m_hpf_res = stream.readFloat();
   m_lpf_freq = stream.readFloat();
   m_lpf_res = stream.readFloat();
+  m_outline_text = stream.readString().toStdString();
 }
 
 void GlynthProcessor::timerCallback() {
@@ -135,8 +137,12 @@ juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
 
 void GlynthProcessor::updateOutline(std::optional<Outline> outline) {
   fmt::println(Logger::file, "Updating outline in processor");
-  // Makes a copy
-  if (outline) {
+  if (!outline) {
+    return;
+  }
+
+  if (m_first_outline_update || outline->text() != m_outline_text) {
+    m_outline_text = outline->text();
     size_t n = Wavetable::s_num_samples;
     auto samples = outline->sample(n);
     auto bbox = outline->bbox();
@@ -158,8 +164,11 @@ void GlynthProcessor::updateOutline(std::optional<Outline> outline) {
       ch1[i] -= y_mean;
     }
     m_synth.updateWavetable(ch0, ch1);
+    m_first_outline_update = false;
   }
 }
+
+std::string_view GlynthProcessor::getOutlineText() { return m_outline_text; }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new GlynthProcessor();

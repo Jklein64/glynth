@@ -179,7 +179,7 @@ private:
   void onContentChanged();
   float getTimeUniform();
 
-  std::string m_content = ".";
+  std::string m_content;
   FT_Face m_face;
   // Null when the outline shouldn't be displayed
   std::optional<Outline> m_outline;

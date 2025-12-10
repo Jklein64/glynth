@@ -63,6 +63,7 @@ public:
   juce::AudioParameterFloat& getParamById(std::string_view id);
   // Update won't be processed until the start of the next audio block
   void updateOutline(std::optional<Outline> outline);
+  std::string_view getOutlineText();
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
@@ -76,6 +77,8 @@ private:
   juce::AudioParameterFloat& m_decay_ms;
 
   Synth& m_synth;
+  std::string m_outline_text = "Glynth";
+  bool m_first_outline_update = true;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
   // Might change in the middle of a block
   // std::optional<Outline> m_outline_tmp;

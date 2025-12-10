@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "error.h"
+#include "logger.h"
 #include "processor.h"
 
 #include <chrono>
@@ -403,7 +404,8 @@ void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
 LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        size_t num_samples)
-    : RectComponent(editor_ref, program_id), m_num_samples(num_samples) {
+    : RectComponent(editor_ref, program_id),
+      m_content(m_processor_ref.getOutlineText()), m_num_samples(num_samples) {
   m_face = m_font_manager.getFace("SplineSansMono-Medium");
   m_samples.resize(m_num_samples);
   // Needed in order to capture keyboard events
@@ -537,13 +539,12 @@ void LissajousComponent::renderOpenGL() {
 }
 
 void LissajousComponent::onContentChanged() {
-  fmt::println(R"(m_content = "{}")", m_content);
+  fmt::println(Logger::file, R"(m_content = "{}")", m_content);
   if (m_content == "") {
     m_outline = std::nullopt;
   } else {
     m_outline.emplace(m_content, m_face, s_pixel_height);
   }
-  // TODO send outline to processor, for more sampling and wavetable building
   auto bounds = getBounds();
   auto w_bounds = static_cast<float>(bounds.getWidth());
   auto h_bounds = static_cast<float>(bounds.getHeight());
