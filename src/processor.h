@@ -188,7 +188,7 @@ private:
   // std::vector<double> m_wavetable;
   double m_sample_rate;
   // Goes from 0 -> 1
-  double m_angle;
+  std::array<double, 2> m_angle;
   // Increment to maintain desired frequency
   double m_inc;
   // Envelope attack in milliseconds
@@ -209,6 +209,8 @@ class Synth : public SubProcessor,
 public:
   Synth(GlynthProcessor& processor_ref, juce::AudioParameterFloat& attack_ms,
         juce::AudioParameterFloat& decay_ms);
+  ~Synth() override;
+
   void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
@@ -222,6 +224,8 @@ private:
   std::array<std::vector<float>, 2> m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
+
+  std::array<std::vector<float>, 2> tmp;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
 };

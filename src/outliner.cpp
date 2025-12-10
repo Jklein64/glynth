@@ -342,13 +342,13 @@ std::vector<glm::vec2> Outline::sample(std::span<float> ts) const {
   }
   std::vector<glm::vec2> samples(ts.size());
   size_t j_best = 0;
+  float total_length = 0.0f;
+  for (auto&& segment : m_segments) {
+    total_length += segment.length();
+  }
   for (size_t i = 0; i < samples.size(); i++) {
     float t = ts[i];
     assert(0 <= t && t < 1);
-    float total_length = 0.0f;
-    for (auto&& segment : m_segments) {
-      total_length += segment.length();
-    }
     // Find the j such that distances[j] = t * total_length. Assuming ts is
     // increasing, j_best should always be at least the previous j_best
     float v_best = std::abs(m_distances[j_best] - t * total_length);

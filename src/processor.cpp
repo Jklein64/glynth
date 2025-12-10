@@ -4,6 +4,8 @@
 #include "logger.h"
 
 #include <fmt/format.h>
+#include <npy/npy.h>
+#include <npy/tensor.h>
 
 GlynthProcessor::GlynthProcessor()
     : AudioProcessor(s_io_layouts),
@@ -79,6 +81,7 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   if (m_outline_tmp.has_value() && m_outline != m_outline_tmp) {
     fmt::println(Logger::file, "Swapped outline in processBlock");
     m_outline = m_outline_tmp;
+    m_synth.makeWavetable(m_outline.value());
   }
   // Normal process block
   juce::ScopedNoDenormals noDenormals;
@@ -278,16 +281,28 @@ Synth::Synth(GlynthProcessor& processor_ref,
   attack_ms.addListener(this);
   decay_ms.addListener(this);
   for (size_t ch = 0; ch < m_wavetable.size(); ch++) {
-    m_wavetable[ch].reserve(512);
-    for (size_t i = 0; i < 512; i++) {
-      float t = static_cast<float>(i) / 512;
-      // TODO handle with BLEP
-      m_wavetable[ch][i] = 0.1f * std::fmod(t, 1.0f);
-    }
+    m_wavetable[ch].resize(512, 0);
+    tmp[ch].reserve(44100 * 10);
+    // for (size_t i = 0; i < 512; i++) {
+    //   float t = static_cast<float>(i) / 512;
+    //   // TODO handle with BLEP
+    //   m_wavetable[ch][i] = 0.1f * std::fmod(t, 1.0f);
+    // }
   }
   for (size_t i = 0; i < 16; i++) {
     m_voices.emplace_back(m_wavetable, attack_ms.get(), decay_ms.get());
   }
+}
+
+Synth::~Synth() {
+  // fmt::println(Logger::file, "Saving file");
+  size_t n = tmp[0].size();
+  npy::tensor<float> tensor(std::vector<size_t>{2, n});
+  for (size_t i = 0; i < n; i++) {
+    tensor(0, i) = tmp[0][i];
+    tensor(1, i) = tmp[1][i];
+  }
+  tensor.save("/Users/jason/Developer/glynth/out/tensor.npy");
 }
 
 void Synth::prepareToPlay(double sample_rate, int) {
@@ -332,13 +347,14 @@ void Synth::processBlock(juce::AudioBuffer<float>& buffer,
     }
 
     for (int ch = 0; ch < buffer.getNumChannels(); ch++) {
-      double sample = 0;
+      float sample = 0;
       for (auto& voice : m_voices) {
         if (!voice.isInactive()) {
-          sample += voice.sample(static_cast<size_t>(ch));
+          sample = voice.sample(static_cast<size_t>(ch));
         }
       }
       buffer.setSample(ch, i, static_cast<float>(sample));
+      tmp[ch].push_back(sample);
     }
   }
 }
@@ -376,6 +392,32 @@ std::optional<size_t> Synth::getOldestVoiceWithState(SynthVoice::State state) {
   return best_i;
 }
 
+void Synth::makeWavetable(const Outline& outline) {
+  size_t n = m_wavetable[0].size();
+  auto samples = outline.sample(n);
+  auto bbox = outline.bbox();
+  // npy::tensor<float> tensor(std::vector<size_t>{2, n});
+  float x_mean = 0;
+  float y_mean = 0;
+  for (size_t i = 0; i < n; i++) {
+    m_wavetable[0][i] = (samples[i].x - bbox.min.x) / bbox.width() * 2;
+    m_wavetable[1][i] = (samples[i].y - bbox.min.y) / bbox.height() * 2;
+    x_mean += m_wavetable[0][i];
+    y_mean += m_wavetable[1][i];
+  }
+  x_mean /= static_cast<float>(n);
+  y_mean /= static_cast<float>(n);
+  // Subtract the mean so there's no DC component
+  for (size_t i = 0; i < n; i++) {
+    m_wavetable[0][i] -= x_mean;
+    m_wavetable[1][i] -= y_mean;
+    // tensor(0, i) = m_wavetable[0][i];
+    // tensor(1, i) = m_wavetable[1][i];
+  }
+  fmt::println(Logger::file, "Updated wavetable");
+  // tensor.save("/Users/jason/Developer/glynth/out/tensor.npy");
+}
+
 SynthVoice::SynthVoice(std::array<std::vector<float>, 2>& wavetable_ref,
                        float attack_ms, float decay_ms)
     : state(m_state), m_wavetable_ref(wavetable_ref), m_attack_ms(attack_ms),
@@ -392,7 +434,7 @@ void SynthVoice::configure(int note_number, double sample_rate) {
   m_gain = 1e-8f;
   m_state = State::Active;
   // Angle goes from 0 -> 1
-  m_angle = 0;
+  m_angle = {0, 0};
   auto freq = juce::MidiMessage::getMidiNoteInHertz(note);
   m_inc = freq / sample_rate;
   id = s_next_id;
@@ -400,11 +442,12 @@ void SynthVoice::configure(int note_number, double sample_rate) {
 }
 
 float SynthVoice::sample(size_t channel) {
-  size_t i = static_cast<size_t>(m_angle * 512) % 512;
+  size_t n = m_wavetable_ref[0].size();
+  size_t i = static_cast<size_t>(m_angle[channel] * n) % n;
   float value = m_wavetable_ref[channel][i];
-  m_angle += m_inc;
-  if (m_angle > 1) {
-    m_angle -= 1;
+  m_angle[channel] += m_inc;
+  if (m_angle[channel] > 1) {
+    m_angle[channel] -= 1;
   }
   if (m_state == State::Active && m_gain < 1) {
     value *= m_gain;

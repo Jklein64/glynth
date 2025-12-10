@@ -138,6 +138,7 @@ target_link_libraries_system(
         efsw-static
         freetype
         readerwriterqueue
+        npy::npy
 )
 
 add_executable(read src/read.cpp src/outliner.cpp)
