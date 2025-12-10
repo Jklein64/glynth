@@ -473,7 +473,7 @@ void LissajousComponent::focusGained(FocusChangeType) {
 }
 
 void LissajousComponent::focusLost(FocusChangeType) {
-  m_processor_ref.updateOutline(m_outline);
+  // m_processor_ref.updateOutline(m_outline);
   m_focused = false;
 }
 
@@ -553,6 +553,7 @@ void LissajousComponent::onContentChanged() {
   auto h_bounds = static_cast<float>(bounds.getHeight());
   float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
   if (m_outline) {
+    m_processor_ref.updateOutline(m_outline);
     m_samples = m_outline->sample(m_num_samples);
     auto& bbox = m_outline->bbox();
     float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
