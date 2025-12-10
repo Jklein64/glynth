@@ -278,6 +278,9 @@ void TextComponent::renderOpenGL() {
   glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   m_shader_manager.useProgram(m_program_id);
   glActiveTexture(GL_TEXTURE0);
+  // TODO make more efficient by storing all the geometry on the GPU and
+  // activating certain indices where appropriate. This is currently the
+  // performance hotspot of the application!
   auto bounds = getBounds();
   auto* parent = getParentComponent();
   int parent_x = parent ? parent->getX() : 0;

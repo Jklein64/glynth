@@ -114,7 +114,10 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
   m_hpf_res = stream.readFloat();
   m_lpf_freq = stream.readFloat();
   m_lpf_res = stream.readFloat();
-  m_outline_text = stream.readString().toStdString();
+  std::string outline_text = stream.readString().toStdString();
+  if (outline_text != "") {
+    m_outline_text = outline_text;
+  }
 }
 
 void GlynthProcessor::timerCallback() {
