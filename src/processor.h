@@ -80,10 +80,6 @@ private:
   std::string m_outline_text = "Glynth";
   bool m_first_outline_update = true;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
-  // Might change in the middle of a block
-  // std::optional<Outline> m_outline_tmp;
-  // Lock-free queue for receiving outlines from editor
-  // moodycamel::ReaderWriterQueue<std::unique_ptr<Outline>> m_outline_queue{8};
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)
 };
