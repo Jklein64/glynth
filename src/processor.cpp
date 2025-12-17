@@ -49,6 +49,7 @@ GlynthProcessor::GlynthProcessor()
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
+  m_processors.emplace_back(new OutputHandler(*this));
 
   m_font_manager.addFace("SplineSansMono-Bold");
   m_font_manager.addFace("SplineSansMono-Medium");
@@ -303,6 +304,30 @@ void HighPassFilter::configure(float freq, float res) {
   double a0 = 1 + alpha;
   b = {(1 + cos_w0) / (2 * a0), -(1 + cos_w0) / a0, (1 + cos_w0) / (2 * a0)};
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
+}
+
+OutputHandler::OutputHandler(GlynthProcessor& processor_ref)
+    : SubProcessor(processor_ref) {}
+
+void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
+                                 juce::MidiBuffer&) {
+  size_t n = static_cast<size_t>(buffer.getNumSamples());
+  auto l_buf = std::span(buffer.getReadPointer(0), n);
+  auto r_buf = std::span(buffer.getReadPointer(1), n);
+  for (size_t i = 0; i < n; i++) {
+    m_current_block_l.push_back(l_buf[i]);
+    m_current_block_r.push_back(r_buf[i]);
+    // m_current_block_l.m_data[m_current_block_l.m_size++] = l_buf[i];
+    // m_current_block_r.m_data[m_current_block_r.m_size++] = r_buf[i];
+    // if (m_current_block.size == Block::s_max_size) {
+    //   bool enqueued = m_buffer.try_enqueue(std::move(m_current_block));
+    //   if (!enqueued) {
+    //     fmt::println(Logger::file, "Failed to enqueue block!");
+    //   }
+    //   // Moved-from object is invalid, so make it valid again
+    //   m_current_block = Block();
+    // }
+  }
 }
 
 Synth::Synth(GlynthProcessor& processor_ref,

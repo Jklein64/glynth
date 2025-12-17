@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "font_manager.h"
+#include "logger.h"
 #include "outliner.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -166,6 +167,41 @@ protected:
 
 private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
+};
+
+class OutputHandler : public SubProcessor {
+public:
+  OutputHandler(GlynthProcessor& processor_ref);
+  void processBlock(juce::AudioBuffer<float>& buffer,
+                    juce::MidiBuffer& midi_messages) override;
+
+private:
+  struct Block {
+    static constexpr size_t s_max_size = 256;
+
+    Block(moodycamel::ReaderWriterQueue<Block>& buffer) : m_buffer(buffer) {}
+
+    void push_back(float v) {
+      m_data[m_size++] = v;
+      if (m_size == s_max_size) {
+        bool enqueued = m_buffer.try_enqueue(std::move(*this));
+        if (!enqueued) {
+          fmt::println(Logger::file, "Failed to enqueue block!");
+        }
+        m_size = 0;
+      }
+    }
+
+  private:
+    moodycamel::ReaderWriterQueue<Block>& m_buffer;
+    std::array<float, s_max_size> m_data;
+    size_t m_size = 0;
+  };
+
+  moodycamel::ReaderWriterQueue<Block> m_buffer_l{1024};
+  moodycamel::ReaderWriterQueue<Block> m_buffer_r{1024};
+  Block m_current_block_l{m_buffer_l};
+  Block m_current_block_r{m_buffer_r};
 };
 
 struct Wavetable {
