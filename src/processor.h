@@ -169,9 +169,9 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };
 
-class OutputHandler : public SubProcessor, juce::Timer {
+class TriggerHandler : public SubProcessor, juce::Timer {
 public:
-  OutputHandler(GlynthProcessor& processor_ref);
+  TriggerHandler(GlynthProcessor& processor_ref);
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
   void timerCallback() override;

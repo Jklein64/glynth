@@ -33,8 +33,10 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_manager.addProgram("char", "rect", "char");
   m_shader_manager.addProgram("param", "rect", "param");
   m_shader_manager.addProgram("lissajous", "rect", "lissajous");
+  m_shader_manager.addProgram("scope", "rect", "scope");
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto lissajous = std::make_unique<LissajousComponent>(*this, "lissajous");
+  auto scope_l = std::make_unique<ScopeComponent>(*this, "scope");
   std::string_view fmt_hz = "{: >7.1f}{}";
   std::string_view fmt_q = "{: >9.6f}{}";
   std::string_view fmt_ms = "{: >8.2f}{}";
@@ -54,6 +56,8 @@ void GlynthEditor::newOpenGLContextCreated() {
   bg->setBounds(getLocalBounds());
   addAndMakeVisible(lissajous.get());
   lissajous->setBounds(66, 146, 708, 125);
+  addAndMakeVisible(scope_l.get());
+  scope_l->setBounds(50 + 16 + 8, 50 + 16, 336, 64);
   // Draw the grid of knobs
   int x = 128, y = 287, w = 184, h = 56, ncols = 3;
   for (size_t i = 0; i < params.size(); i++) {
@@ -66,6 +70,7 @@ void GlynthEditor::newOpenGLContextCreated() {
 
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(lissajous));
+  m_shader_components.push_back(std::move(scope_l));
   for (auto& param : params) {
     m_shader_components.push_back(std::move(param));
   }
@@ -608,4 +613,13 @@ float LissajousComponent::getTimeUniform() {
   } else {
     return -1;
   }
+}
+
+ScopeComponent::ScopeComponent(GlynthEditor& editor_ref,
+                               const std::string& program_id)
+    : RectComponent(editor_ref, program_id) {}
+
+void ScopeComponent::paint(juce::Graphics& g) {
+  g.setColour(juce::Colours::blue);
+  g.drawRect(getLocalBounds());
 }

@@ -49,7 +49,7 @@ GlynthProcessor::GlynthProcessor()
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
-  m_processors.emplace_back(new OutputHandler(*this));
+  m_processors.emplace_back(new TriggerHandler(*this));
 
   m_font_manager.addFace("SplineSansMono-Bold");
   m_font_manager.addFace("SplineSansMono-Medium");
@@ -306,13 +306,13 @@ void HighPassFilter::configure(float freq, float res) {
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
 }
 
-OutputHandler::OutputHandler(GlynthProcessor& processor_ref)
+TriggerHandler::TriggerHandler(GlynthProcessor& processor_ref)
     : SubProcessor(processor_ref) {
   startTimerHz(20);
 }
 
-void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
-                                 juce::MidiBuffer&) {
+void TriggerHandler::processBlock(juce::AudioBuffer<float>& buffer,
+                                  juce::MidiBuffer&) {
   size_t n = static_cast<size_t>(buffer.getNumSamples());
   auto l_buf = std::span(buffer.getReadPointer(0), n);
   auto r_buf = std::span(buffer.getReadPointer(1), n);
@@ -327,7 +327,7 @@ void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
   }
 }
 
-void OutputHandler::timerCallback() {
+void TriggerHandler::timerCallback() {
   // Read sample blocks from the buffer
   int count = 0;
   Block block;
