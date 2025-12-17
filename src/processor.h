@@ -66,7 +66,8 @@ public:
   void setOutlineFace(std::string_view face_name);
   void setOutlineText(std::string_view outline_text);
   const Outline& getOutline();
-  std::string_view getOutlineFace();
+  FT_Face getOutlineFace();
+  std::string_view getOutlineText();
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
@@ -249,8 +250,7 @@ public:
                     juce::MidiBuffer& midi_messages) override;
   void parameterValueChanged(int index, float new_value) override;
   void parameterGestureChanged(int index, bool gesture_is_starting) override;
-  void updateWavetable(std::span<float, Wavetable::s_num_samples> ch0,
-                       std::span<float, Wavetable::s_num_samples> ch1);
+  void updateWavetable(const Outline& outline);
 
 private:
   std::optional<size_t> getOldestVoiceWithState(SynthVoice::State state);

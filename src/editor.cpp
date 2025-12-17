@@ -401,8 +401,7 @@ void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
 LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        size_t num_samples)
-    : RectComponent(editor_ref, program_id), m_content("Glynth"),
-      m_num_samples(num_samples) {
+    : RectComponent(editor_ref, program_id), m_num_samples(num_samples) {
   m_samples.resize(m_num_samples);
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
@@ -424,6 +423,8 @@ LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // Get content from the processor's state
+  m_content = m_processor_ref.getOutlineText();
 }
 
 LissajousComponent::~LissajousComponent() {
@@ -465,7 +466,7 @@ void LissajousComponent::focusGained(FocusChangeType) {
 }
 
 void LissajousComponent::focusLost(FocusChangeType) {
-  // m_processor_ref.updateOutline(m_outline);
+  // Consider only changing the text here instead of every character
   m_focused = false;
 }
 
@@ -535,7 +536,7 @@ void LissajousComponent::renderOpenGL() {
 
 void LissajousComponent::onContentChanged() {
   fmt::println(Logger::file, R"(m_content = "{}")", m_content);
-  auto face = m_font_manager.getFace(m_processor_ref.getOutlineFace());
+  auto face = m_processor_ref.getOutlineFace();
   auto bounds = getBounds();
   auto w_bounds = static_cast<float>(bounds.getWidth());
   auto h_bounds = static_cast<float>(bounds.getHeight());
