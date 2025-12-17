@@ -317,12 +317,12 @@ void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
   auto l_buf = std::span(buffer.getReadPointer(0), n);
   auto r_buf = std::span(buffer.getReadPointer(1), n);
   for (size_t i = 0; i < n; i++) {
-    bool is_full = m_current_block.addSample(l_buf[i], r_buf[i]);
-    if (is_full) {
-      if (!m_buffer.try_enqueue(std::move(m_current_block))) {
+    m_block[m_size++] = glm::vec2(l_buf[i], r_buf[i]);
+    if (m_size == m_block.size()) {
+      if (!m_buffer.try_enqueue(std::move(m_block))) {
         fmt::println(Logger::file, "Failed to enqueue block!");
       }
-      m_current_block.clear();
+      m_size = 0;
     }
   }
 }
@@ -330,18 +330,14 @@ void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
 void OutputHandler::timerCallback() {
   // Read sample blocks from the buffer
   int count = 0;
-  SampleBlock block;
+  Block block;
   while (m_buffer.try_dequeue(block)) {
-    float rms_l = 0, rms_r = 0;
-    const float* data_l = block.data_l();
-    const float* data_r = block.data_r();
+    glm::vec2 rms = glm::vec2(0, 0);
     for (size_t i = 0; i < block.size(); i++) {
-      rms_l += data_l[i] * data_l[i];
-      rms_r += data_r[i] * data_r[i];
+      rms += block[i] * block[i];
     }
-    rms_l = std::sqrt(rms_l / static_cast<float>(block.size()));
-    rms_r = std::sqrt(rms_r / static_cast<float>(block.size()));
-    fmt::println(Logger::file, "rms = ({}, {})", rms_l, rms_r);
+    rms = glm::sqrt(rms / static_cast<float>(block.size()));
+    fmt::println(Logger::file, "rms = ({}, {})", rms.x, rms.y);
     count++;
   }
 

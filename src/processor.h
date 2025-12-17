@@ -177,31 +177,12 @@ public:
   void timerCallback() override;
 
 private:
-  struct SampleBlock {
-    // TODO find good tradeoff between queue performance and latency
-    static constexpr size_t s_max_size = 64;
-
-    bool addSample(float l, float r) {
-      m_data_l[m_size] = l;
-      m_data_r[m_size] = r;
-      m_size++;
-      return m_size == s_max_size;
-    }
-
-    void clear() { m_size = 0; }
-    size_t size() { return m_size; }
-    const float* data_l() { return m_data_l.data(); }
-    const float* data_r() { return m_data_r.data(); }
-
-  private:
-    std::array<float, s_max_size> m_data_l;
-    std::array<float, s_max_size> m_data_r;
-    size_t m_size = 0;
-  };
+  using Block = std::array<glm::vec2, 128>;
 
   // For getting samples off of the audio thread
-  moodycamel::ReaderWriterQueue<SampleBlock> m_buffer{1024};
-  SampleBlock m_current_block;
+  moodycamel::ReaderWriterQueue<Block> m_buffer{1024};
+  size_t m_size = 0;
+  Block m_block;
 };
 
 struct Wavetable {
