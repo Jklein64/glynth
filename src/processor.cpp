@@ -49,7 +49,7 @@ GlynthProcessor::GlynthProcessor()
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
-  m_processors.emplace_back(new TriggerHandler(*this));
+  m_processors.emplace_back(new TriggerHandler(*this, 0));
 
   m_font_manager.addFace("SplineSansMono-Bold");
   m_font_manager.addFace("SplineSansMono-Medium");
@@ -306,43 +306,60 @@ void HighPassFilter::configure(float freq, float res) {
   a = {1, (-2 * cos_w0) / a0, (1 - alpha) / a0};
 }
 
-TriggerHandler::TriggerHandler(GlynthProcessor& processor_ref)
-    : SubProcessor(processor_ref) {
-  startTimerHz(20);
+TriggerHandler::TriggerHandler(GlynthProcessor& processor_ref,
+                               const int channel)
+    : SubProcessor(processor_ref), m_channel(channel) {
+  startTimerHz(60);
+}
+
+void TriggerHandler::prepareToPlay(double sample_rate, int) {
+  double cooldown_samples = sample_rate * s_trigger_cooldown;
+  m_burst_length = static_cast<size_t>(cooldown_samples);
+  m_burst_buffer.reserve(m_burst_length);
 }
 
 void TriggerHandler::processBlock(juce::AudioBuffer<float>& buffer,
                                   juce::MidiBuffer&) {
   size_t n = static_cast<size_t>(buffer.getNumSamples());
-  auto l_buf = std::span(buffer.getReadPointer(0), n);
-  auto r_buf = std::span(buffer.getReadPointer(1), n);
+  auto buffer_ptr = buffer.getReadPointer(m_channel);
   for (size_t i = 0; i < n; i++) {
-    m_block[m_size++] = glm::vec2(l_buf[i], r_buf[i]);
-    if (m_size == m_block.size()) {
-      if (!m_buffer.try_enqueue(std::move(m_block))) {
-        fmt::println(Logger::file, "Failed to enqueue block!");
+    float x = buffer_ptr[i];
+    float thresh = s_trigger_threshold;
+    // Rising edge trigger based on threshold
+    m_block.add(x, m_prev_sample < thresh && x >= thresh);
+    if (m_block.full()) {
+      if (!m_blocks.try_enqueue(std::move(m_block))) {
+        // This means the consumer wasn't pulling from the queue fast enough
+        throw GlynthError("Block usage is slower than generation!");
       }
-      m_size = 0;
+      // m_block is moved from, so needs to be reset
+      m_block = Block();
     }
+    m_prev_sample = x;
   }
 }
 
 void TriggerHandler::timerCallback() {
-  // Read sample blocks from the buffer
-  int count = 0;
+  // Read trigger blocks from the queue into a burst buffer.
+  // Runs in the timer thread so allocations are fine
   Block block;
-  while (m_buffer.try_dequeue(block)) {
-    glm::vec2 rms = glm::vec2(0, 0);
+  while (m_blocks.try_dequeue(block)) {
+    auto trigger = block.trigger();
     for (size_t i = 0; i < block.size(); i++) {
-      rms += block[i] * block[i];
+      float x = block[i];
+      if (!m_triggered && trigger.has_value() && i == trigger.value()) {
+        m_triggered = true;
+      }
+      if (m_triggered) {
+        m_burst_buffer.push_back(x);
+        if (m_burst_buffer.size() == m_burst_length) {
+          fmt::println("Burst buffer full!");
+          // TODO move the burst buffer over to the editor
+          m_triggered = false;
+          m_burst_buffer.clear();
+        }
+      }
     }
-    rms = glm::sqrt(rms / static_cast<float>(block.size()));
-    fmt::println(Logger::file, "rms = ({}, {})", rms.x, rms.y);
-    count++;
-  }
-
-  if (count > 0) {
-    fmt::println(Logger::file, "Processed {} blocks", count);
   }
 }
 

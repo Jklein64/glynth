@@ -171,18 +171,52 @@ private:
 
 class TriggerHandler : public SubProcessor, juce::Timer {
 public:
-  TriggerHandler(GlynthProcessor& processor_ref);
+  // A rising edge across this value causes a trigger
+  static constexpr float s_trigger_threshold = 0.01f;
+  // Length (in seconds) of the cooldown after a trigger
+  static constexpr float s_trigger_cooldown = 0.075f;
+
+  TriggerHandler(GlynthProcessor& processor_ref, const int channel);
+  void prepareToPlay(double sample_rate, int samples_per_block) override;
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
   void timerCallback() override;
 
 private:
-  using Block = std::array<glm::vec2, 128>;
+  struct Block {
+  public:
+    inline void add(float x, bool trigger = false) {
+      assert(m_size < m_samples.size());
+      m_samples[m_size] = x;
+      if (trigger) {
+        m_trigger = m_size;
+      }
+      m_size++;
+    }
 
+    inline size_t size() { return m_size; }
+    inline bool full() { return m_size == m_samples.size(); }
+    inline std::optional<size_t> trigger() { return m_trigger; }
+    inline float operator[](size_t i) { return m_samples[i]; }
+
+  private:
+    std::array<float, 64> m_samples;
+    std::optional<size_t> m_trigger = std::nullopt;
+    size_t m_size = 0;
+  };
+
+  const int m_channel;
   // For getting samples off of the audio thread
-  moodycamel::ReaderWriterQueue<Block> m_buffer{1024};
+  moodycamel::ReaderWriterQueue<Block> m_blocks{1024};
+  float m_prev_sample = 0;
   size_t m_size = 0;
   Block m_block;
+  // Number of samples to store after a trigger
+  size_t m_burst_length;
+  std::vector<float> m_burst_buffer;
+  bool m_triggered = false;
+
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TriggerHandler)
 };
 
 struct Wavetable {
