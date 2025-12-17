@@ -39,6 +39,7 @@ struct BoundingBox {
 
 class Outline {
 public:
+  Outline(); // Empty
   Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
           bool invert_y = false, size_t arc_length_samples = 10000);
 

@@ -237,6 +237,8 @@ FT_Outline_Funcs funcs = {
     .delta = 0,
 };
 
+Outline::Outline() : m_text("") {}
+
 Outline::Outline(std::string_view text, FT_Face face, FT_UInt pixel_height,
                  bool invert_y, size_t num_param_samples)
     : m_text(text), m_num_param_samples(num_param_samples) {

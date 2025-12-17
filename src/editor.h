@@ -1,7 +1,6 @@
 #pragma once
 
 #include "font_manager.h"
-#include "outliner.h"
 #include "processor.h"
 #include "shader_manager.h"
 
@@ -16,7 +15,7 @@ class ShaderComponent;
 class GlynthEditor final : public juce::AudioProcessorEditor,
                            public juce::OpenGLRenderer {
 public:
-  explicit GlynthEditor(GlynthProcessor&);
+  explicit GlynthEditor(GlynthProcessor&, FontManager&);
   ~GlynthEditor() override;
 
   void paint(juce::Graphics&) override;
@@ -28,7 +27,7 @@ private:
   GlynthProcessor& m_processor_ref;
   juce::OpenGLContext m_context;
   ShaderManager m_shader_manager;
-  FontManager m_font_manager;
+  FontManager& m_font_manager;
   std::vector<std::unique_ptr<ShaderComponent>> m_shader_components;
 
   friend class ShaderComponent;
@@ -180,9 +179,8 @@ private:
   float getTimeUniform();
 
   std::string m_content;
-  FT_Face m_face;
   // Null when the outline shouldn't be displayed
-  std::optional<Outline> m_outline;
+  // std::optional<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
   size_t m_num_samples;
   // Bottom left corner of the last glyph

@@ -49,6 +49,12 @@ GlynthProcessor::GlynthProcessor()
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
+
+  m_font_manager.addFace("SplineSansMono-Bold");
+  m_font_manager.addFace("SplineSansMono-Medium");
+  setOutlineText("Glynth");
+  // auto face = m_font_manager.getFace("SplineSansMono-Medium");
+  // m_outline = Outline("Glynth", face, 20);
 }
 
 GlynthProcessor::~GlynthProcessor() { fclose(Logger::file); }
@@ -91,7 +97,7 @@ void GlynthProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
 juce::AudioProcessorEditor* GlynthProcessor::createEditor() {
   // return new juce::GenericAudioProcessorEditor(*this);
-  return new GlynthEditor(*this);
+  return new GlynthEditor(*this, m_font_manager);
 }
 
 void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
@@ -103,7 +109,7 @@ void GlynthProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
   stream.writeFloat(m_hpf_res);
   stream.writeFloat(m_lpf_freq);
   stream.writeFloat(m_lpf_res);
-  stream.writeString(m_outline_text);
+  // stream.writeString(m_outline_text);
 }
 
 void GlynthProcessor::setStateInformation(const void* data, int size) {
@@ -114,10 +120,10 @@ void GlynthProcessor::setStateInformation(const void* data, int size) {
   m_hpf_res = stream.readFloat();
   m_lpf_freq = stream.readFloat();
   m_lpf_res = stream.readFloat();
-  std::string outline_text = stream.readString().toStdString();
-  if (outline_text != "") {
-    m_outline_text = outline_text;
-  }
+  // std::string outline_text = stream.readString().toStdString();
+  // if (outline_text != "") {
+  //   m_outline_text = outline_text;
+  // }
 }
 
 void GlynthProcessor::timerCallback() {
@@ -138,40 +144,41 @@ juce::AudioParameterFloat& GlynthProcessor::getParamById(std::string_view id) {
   throw GlynthError(fmt::format(R"(No parameter found with id "{}")", id));
 }
 
-void GlynthProcessor::updateOutline(std::optional<Outline> outline) {
-  fmt::println(Logger::file, "Updating outline in processor");
-  if (!outline) {
-    return;
-  }
-
-  if (m_first_outline_update || outline->text() != m_outline_text) {
-    m_outline_text = outline->text();
-    size_t n = Wavetable::s_num_samples;
-    auto samples = outline->sample(n);
-    auto bbox = outline->bbox();
-    float x_mean = 0;
-    float y_mean = 0;
-    std::array<float, Wavetable::s_num_samples> ch0;
-    std::array<float, Wavetable::s_num_samples> ch1;
-    for (size_t i = 0; i < n; i++) {
-      ch0[i] = (samples[i].x - bbox.min.x) / bbox.width() * 2;
-      ch1[i] = (samples[i].y - bbox.min.y) / bbox.height() * 2;
-      x_mean += ch0[i];
-      y_mean += ch1[i];
-    }
-    x_mean /= static_cast<float>(n);
-    y_mean /= static_cast<float>(n);
-    // Subtract the mean so there's no DC component
-    for (size_t i = 0; i < n; i++) {
-      ch0[i] -= x_mean;
-      ch1[i] -= y_mean;
-    }
-    m_synth.updateWavetable(ch0, ch1);
-    m_first_outline_update = false;
-  }
+void GlynthProcessor::setOutlineFace(std::string_view face_name) {
+  m_outline_face = face_name;
+  setOutlineText(m_outline_text);
 }
 
-std::string_view GlynthProcessor::getOutlineText() { return m_outline_text; }
+void GlynthProcessor::setOutlineText(std::string_view outline_text) {
+  auto face = m_font_manager.getFace(m_outline_face);
+  m_outline = Outline(outline_text, face, 20);
+
+  size_t n = Wavetable::s_num_samples;
+  auto samples = m_outline.sample(n);
+  auto bbox = m_outline.bbox();
+  float x_mean = 0;
+  float y_mean = 0;
+  std::array<float, Wavetable::s_num_samples> ch0;
+  std::array<float, Wavetable::s_num_samples> ch1;
+  for (size_t i = 0; i < n; i++) {
+    ch0[i] = (samples[i].x - bbox.min.x) / bbox.width() * 2;
+    ch1[i] = (samples[i].y - bbox.min.y) / bbox.height() * 2;
+    x_mean += ch0[i];
+    y_mean += ch1[i];
+  }
+  x_mean /= static_cast<float>(n);
+  y_mean /= static_cast<float>(n);
+  // Subtract the mean so there's no DC component
+  for (size_t i = 0; i < n; i++) {
+    ch0[i] -= x_mean;
+    ch1[i] -= y_mean;
+  }
+  m_synth.updateWavetable(ch0, ch1);
+}
+
+const Outline& GlynthProcessor::getOutline() { return m_outline; }
+
+std::string_view GlynthProcessor::getOutlineFace() { return m_outline_face; }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new GlynthProcessor();

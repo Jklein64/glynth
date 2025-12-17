@@ -9,9 +9,9 @@
 #include <fmt/ranges.h>
 #include <glm/ext.hpp>
 
-GlynthEditor::GlynthEditor(GlynthProcessor& p)
+GlynthEditor::GlynthEditor(GlynthProcessor& p, FontManager& font_manager)
     : AudioProcessorEditor(&p), m_processor_ref(p), m_shader_manager(m_context),
-      m_font_manager(m_context) {
+      m_font_manager(font_manager) {
   // Must set size for window to show properly
   setSize(840, 473);
   setOpaque(true);
@@ -25,8 +25,7 @@ GlynthEditor::~GlynthEditor() { m_context.detach(); }
 void GlynthEditor::paint(juce::Graphics&) {}
 
 void GlynthEditor::newOpenGLContextCreated() {
-  m_font_manager.addFace("SplineSansMono-Bold");
-  m_font_manager.addFace("SplineSansMono-Medium");
+  m_font_manager.setContext(m_context);
   m_font_manager.buildBitmaps("SplineSansMono-Bold", 20);
   m_font_manager.buildBitmaps("SplineSansMono-Medium", 10);
   m_shader_manager.addProgram("bg", "ortho", "vt220");
@@ -402,9 +401,8 @@ void ParameterComponent::mouseDoubleClick(const juce::MouseEvent&) {
 LissajousComponent::LissajousComponent(GlynthEditor& editor_ref,
                                        const std::string& program_id,
                                        size_t num_samples)
-    : RectComponent(editor_ref, program_id),
-      m_content(m_processor_ref.getOutlineText()), m_num_samples(num_samples) {
-  m_face = m_font_manager.getFace("SplineSansMono-Medium");
+    : RectComponent(editor_ref, program_id), m_content("Glynth"),
+      m_num_samples(num_samples) {
   m_samples.resize(m_num_samples);
   // Needed in order to capture keyboard events
   setWantsKeyboardFocus(true);
@@ -443,9 +441,8 @@ void LissajousComponent::resized() {
   using namespace juce::gl;
   m_shader_manager.useProgram(m_program_id);
   onContentChanged();
-  m_processor_ref.updateOutline(m_outline);
-  m_shader_manager.setUniform(m_program_id, "u_has_outline",
-                              m_outline.has_value());
+  // m_processor_ref.updateOutline(m_outline);
+  m_shader_manager.setUniform(m_program_id, "u_has_outline", m_content != "");
   m_shader_manager.setUniform(m_program_id, "u_outline_glyph_corner",
                               m_outline_glyph_corner);
   m_shader_manager.setUniform(m_program_id, "u_outline_glyph_size",
@@ -512,7 +509,7 @@ void LissajousComponent::renderOpenGL() {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_1D, m_texture);
   if (m_dirty) {
-    if (!m_outline.has_value()) {
+    if (m_content == "") {
       m_shader_manager.setUniform(m_program_id, "u_has_outline", false);
     } else {
       if (m_samples.size() > 0) {
@@ -538,20 +535,31 @@ void LissajousComponent::renderOpenGL() {
 
 void LissajousComponent::onContentChanged() {
   fmt::println(Logger::file, R"(m_content = "{}")", m_content);
-  if (m_content == "") {
-    m_outline = std::nullopt;
-  } else {
-    m_outline.emplace(m_content, m_face, s_pixel_height);
-  }
+  auto face = m_font_manager.getFace(m_processor_ref.getOutlineFace());
   auto bounds = getBounds();
   auto w_bounds = static_cast<float>(bounds.getWidth());
   auto h_bounds = static_cast<float>(bounds.getHeight());
-  float h_face = static_cast<float>(m_face->size->metrics.height) / 64;
-  if (m_outline) {
-    m_processor_ref.updateOutline(m_outline);
-    m_samples = m_outline->sample(m_num_samples);
-    auto& bbox = m_outline->bbox();
-    float descender = static_cast<float>(m_face->size->metrics.descender) / 64;
+  float h_face = static_cast<float>(face->size->metrics.height) / 64;
+
+  if (m_content == "") {
+    // Use the width of 'x' when there is no character to show
+    if (auto err = FT_Load_Char(face, 'x', FT_LOAD_DEFAULT)) {
+      throw FreetypeError(FT_Error_String(err));
+    }
+    float scale = h_bounds / h_face;
+    auto& glyph = *face->glyph;
+    float width = scale * static_cast<float>(glyph.metrics.width) / 64;
+    m_outline_glyph_size.x = width;
+    m_outline_glyph_size.y = h_bounds;
+    m_outline_glyph_corner.x = (w_bounds - width) / 2;
+    m_outline_glyph_corner.y = 0;
+  } else {
+    // Non-empty content gets sent over to replace outline
+    m_processor_ref.setOutlineText(m_content);
+    auto& outline = m_processor_ref.getOutline();
+    m_samples = outline.sample(m_num_samples);
+    auto& bbox = outline.bbox();
+    float descender = static_cast<float>(face->size->metrics.descender) / 64;
     float w_outline = h_bounds / h_face * bbox.width();
     float h_outline = h_bounds;
     if (w_outline > w_bounds) {
@@ -573,28 +581,16 @@ void LissajousComponent::onContentChanged() {
     }
     // Get glyph dimensions for last character in outline
     auto char_code = static_cast<FT_ULong>(m_content.back());
-    if (auto err = FT_Load_Char(m_face, char_code, FT_LOAD_DEFAULT)) {
+    if (auto err = FT_Load_Char(face, char_code, FT_LOAD_DEFAULT)) {
       throw FreetypeError(FT_Error_String(err));
     }
-    auto& glyph = *m_face->glyph;
+    auto& glyph = *face->glyph;
     float scale = h_outline / h_face;
     float width = scale * static_cast<float>(glyph.metrics.width) / 64;
     m_outline_glyph_size.x = width;
     m_outline_glyph_size.y = h_outline;
     m_outline_glyph_corner.x = w_outline + offset_x - width;
     m_outline_glyph_corner.y = offset_y;
-  } else {
-    // Use the width of 'x' when there is no character to show
-    if (auto err = FT_Load_Char(m_face, 'x', FT_LOAD_DEFAULT)) {
-      throw FreetypeError(FT_Error_String(err));
-    }
-    float scale = h_bounds / h_face;
-    auto& glyph = *m_face->glyph;
-    float width = scale * static_cast<float>(glyph.metrics.width) / 64;
-    m_outline_glyph_size.x = width;
-    m_outline_glyph_size.y = h_bounds;
-    m_outline_glyph_corner.x = (w_bounds - width) / 2;
-    m_outline_glyph_corner.y = 0;
   }
   // Stay solid during changes and only start blinking afterward
   m_last_change_time = std::chrono::high_resolution_clock::now();

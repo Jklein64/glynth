@@ -6,7 +6,7 @@
 #include <fmt/format.h>
 #include <regex>
 
-FontManager::FontManager(juce::OpenGLContext& context) : m_context(context) {
+FontManager::FontManager() {
   FT_Error err;
   if (err = FT_Init_FreeType(&m_library); err != 0) {
     throw FreetypeError(FT_Error_String(err));
@@ -37,6 +37,10 @@ public:
 
 FontManager::~FontManager() { FT_Done_FreeType(m_library); }
 
+void FontManager::setContext(juce::OpenGLContext& context) {
+  m_context = context;
+}
+
 void FontManager::addFace(std::string_view face_name) {
   // Load from binary data; assumes face_name is the non-extension filename
   std::string resource_name = std::string(face_name) + "_ttf";
@@ -65,7 +69,7 @@ FT_Face FontManager::getFace(std::string_view face_name) {
 
 void FontManager::buildBitmaps(std::string_view face_name,
                                FT_UInt pixel_height) {
-  assert(m_context.isAttached() && m_context.isActive() && m_display_scale > 0);
+  assert(m_context.has_value());
   auto& face = m_faces.at(std::string(face_name));
   // Render face to bitmaps. Interpret height in logical pixels
   auto& charmap =
@@ -85,7 +89,7 @@ void FontManager::buildBitmaps(std::string_view face_name,
 const FontManager::Character&
 FontManager::getCharacter(std::string_view face_name, char character,
                           FT_UInt pixel_height) {
-  assert(m_context.isAttached() && m_context.isActive());
+  assert(m_context.has_value());
   auto key = std::make_pair(std::string(face_name), pixel_height);
   if (auto it = m_character_maps.find(key); it != m_character_maps.end()) {
     return it->second[static_cast<size_t>(character)];

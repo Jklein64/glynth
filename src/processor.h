@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.h"
+#include "font_manager.h"
 #include "outliner.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -61,9 +62,11 @@ public:
   void timerCallback() override;
   // All parameters are float values
   juce::AudioParameterFloat& getParamById(std::string_view id);
-  // Update won't be processed until the start of the next audio block
-  void updateOutline(std::optional<Outline> outline);
-  std::string_view getOutlineText();
+
+  void setOutlineFace(std::string_view face_name);
+  void setOutlineText(std::string_view outline_text);
+  const Outline& getOutline();
+  std::string_view getOutlineFace();
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
@@ -78,7 +81,9 @@ private:
 
   Synth& m_synth;
   std::string m_outline_text = "Glynth";
-  bool m_first_outline_update = true;
+  std::string m_outline_face = "SplineSansMono-Medium";
+  Outline m_outline;
+  FontManager m_font_manager;
   std::vector<std::unique_ptr<SubProcessor>> m_processors;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GlynthProcessor)

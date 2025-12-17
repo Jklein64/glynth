@@ -16,8 +16,9 @@ public:
     GLuint texture;
   };
 
-  FontManager(juce::OpenGLContext& context);
+  FontManager();
   ~FontManager();
+  void setContext(juce::OpenGLContext& context);
   void addFace(std::string_view face_name);
   FT_Face getFace(std::string_view face_name);
   void buildBitmaps(std::string_view face_name, FT_UInt pixel_height);
@@ -37,7 +38,7 @@ private:
     }
   };
 
-  juce::OpenGLContext& m_context;
+  std::optional<std::reference_wrapper<juce::OpenGLContext>> m_context;
   FT_Library m_library;
   std::unordered_map<std::string, FT_Face> m_faces;
   // Maps the pair (face_name, pixel_height) -> charmap
