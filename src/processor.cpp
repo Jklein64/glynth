@@ -307,7 +307,9 @@ void HighPassFilter::configure(float freq, float res) {
 }
 
 OutputHandler::OutputHandler(GlynthProcessor& processor_ref)
-    : SubProcessor(processor_ref) {}
+    : SubProcessor(processor_ref) {
+  startTimerHz(20);
+}
 
 void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
                                  juce::MidiBuffer&) {
@@ -322,6 +324,29 @@ void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
       }
       m_current_block.clear();
     }
+  }
+}
+
+void OutputHandler::timerCallback() {
+  // Read sample blocks from the buffer
+  int count = 0;
+  SampleBlock block;
+  while (m_buffer.try_dequeue(block)) {
+    float rms_l = 0, rms_r = 0;
+    const float* data_l = block.data_l();
+    const float* data_r = block.data_r();
+    for (size_t i = 0; i < block.size(); i++) {
+      rms_l += data_l[i] * data_l[i];
+      rms_r += data_r[i] * data_r[i];
+    }
+    rms_l = std::sqrt(rms_l / static_cast<float>(block.size()));
+    rms_r = std::sqrt(rms_r / static_cast<float>(block.size()));
+    fmt::println(Logger::file, "rms = ({}, {})", rms_l, rms_r);
+    count++;
+  }
+
+  if (count > 0) {
+    fmt::println(Logger::file, "Processed {} blocks", count);
   }
 }
 

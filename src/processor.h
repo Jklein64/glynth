@@ -169,15 +169,17 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HighPassFilter)
 };
 
-class OutputHandler : public SubProcessor {
+class OutputHandler : public SubProcessor, juce::Timer {
 public:
   OutputHandler(GlynthProcessor& processor_ref);
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
+  void timerCallback() override;
 
 private:
   struct SampleBlock {
-    static constexpr size_t s_max_size = 256;
+    // TODO find good tradeoff between queue performance and latency
+    static constexpr size_t s_max_size = 64;
 
     bool addSample(float l, float r) {
       m_data_l[m_size] = l;
@@ -187,6 +189,9 @@ private:
     }
 
     void clear() { m_size = 0; }
+    size_t size() { return m_size; }
+    const float* data_l() { return m_data_l.data(); }
+    const float* data_r() { return m_data_r.data(); }
 
   private:
     std::array<float, s_max_size> m_data_l;
@@ -194,6 +199,7 @@ private:
     size_t m_size = 0;
   };
 
+  // For getting samples off of the audio thread
   moodycamel::ReaderWriterQueue<SampleBlock> m_buffer{1024};
   SampleBlock m_current_block;
 };
