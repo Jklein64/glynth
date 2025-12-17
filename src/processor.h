@@ -176,32 +176,26 @@ public:
                     juce::MidiBuffer& midi_messages) override;
 
 private:
-  struct Block {
+  struct SampleBlock {
     static constexpr size_t s_max_size = 256;
 
-    Block(moodycamel::ReaderWriterQueue<Block>& buffer) : m_buffer(buffer) {}
-
-    void push_back(float v) {
-      m_data[m_size++] = v;
-      if (m_size == s_max_size) {
-        bool enqueued = m_buffer.try_enqueue(std::move(*this));
-        if (!enqueued) {
-          fmt::println(Logger::file, "Failed to enqueue block!");
-        }
-        m_size = 0;
-      }
+    bool addSample(float l, float r) {
+      m_data_l[m_size] = l;
+      m_data_r[m_size] = r;
+      m_size++;
+      return m_size == s_max_size;
     }
 
+    void clear() { m_size = 0; }
+
   private:
-    moodycamel::ReaderWriterQueue<Block>& m_buffer;
-    std::array<float, s_max_size> m_data;
+    std::array<float, s_max_size> m_data_l;
+    std::array<float, s_max_size> m_data_r;
     size_t m_size = 0;
   };
 
-  moodycamel::ReaderWriterQueue<Block> m_buffer_l{1024};
-  moodycamel::ReaderWriterQueue<Block> m_buffer_r{1024};
-  Block m_current_block_l{m_buffer_l};
-  Block m_current_block_r{m_buffer_r};
+  moodycamel::ReaderWriterQueue<SampleBlock> m_buffer{1024};
+  SampleBlock m_current_block;
 };
 
 struct Wavetable {

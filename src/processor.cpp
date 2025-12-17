@@ -315,18 +315,13 @@ void OutputHandler::processBlock(juce::AudioBuffer<float>& buffer,
   auto l_buf = std::span(buffer.getReadPointer(0), n);
   auto r_buf = std::span(buffer.getReadPointer(1), n);
   for (size_t i = 0; i < n; i++) {
-    m_current_block_l.push_back(l_buf[i]);
-    m_current_block_r.push_back(r_buf[i]);
-    // m_current_block_l.m_data[m_current_block_l.m_size++] = l_buf[i];
-    // m_current_block_r.m_data[m_current_block_r.m_size++] = r_buf[i];
-    // if (m_current_block.size == Block::s_max_size) {
-    //   bool enqueued = m_buffer.try_enqueue(std::move(m_current_block));
-    //   if (!enqueued) {
-    //     fmt::println(Logger::file, "Failed to enqueue block!");
-    //   }
-    //   // Moved-from object is invalid, so make it valid again
-    //   m_current_block = Block();
-    // }
+    bool is_full = m_current_block.addSample(l_buf[i], r_buf[i]);
+    if (is_full) {
+      if (!m_buffer.try_enqueue(std::move(m_current_block))) {
+        fmt::println(Logger::file, "Failed to enqueue block!");
+      }
+      m_current_block.clear();
+    }
   }
 }
 
