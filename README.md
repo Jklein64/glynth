@@ -2,7 +2,7 @@
 
 Synthesize audio by tracing text glyphs! Work-in-progress.
 
-![Screenshot of plugin window in Logic Pro](img/logic-pro.png)
+![Animation of plugin in the Audio Plugin Host](img/plugin-host.gif)
 
 ## Installation
 
