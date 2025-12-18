@@ -364,7 +364,6 @@ void TriggerHandler::timerCallback() {
           if (m_callback) {
             (*m_callback)(std::move(m_burst_buffer));
           }
-          // TODO move the burst buffer over to the editor
           m_triggered = false;
           m_burst_buffer.clear();
         }

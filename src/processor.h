@@ -178,7 +178,7 @@ private:
 class TriggerHandler : public SubProcessor, juce::Timer {
 public:
   // A rising edge across this value causes a trigger
-  static constexpr float s_trigger_threshold = 0.01f;
+  static constexpr float s_trigger_threshold = 1e-8f;
   // Length (in seconds) of the cooldown after a trigger
   static constexpr float s_trigger_cooldown = 0.075f;
 
