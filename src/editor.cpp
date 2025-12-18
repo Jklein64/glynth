@@ -631,20 +631,6 @@ ScopeComponent::ScopeComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  // m_processor_ref.setBurstBufferCallback(
-  //     [this](std::vector<float>&& burst_buffer) {
-  //       m_samples = std::move(burst_buffer);
-  //       // Rescale so -1 -> 1 fits within the vertical middle half
-  //       float height = static_cast<float>(getHeight());
-  //       for (auto& sample : m_samples) {
-  //         sample = (sample + 1) / 2 * height;
-  //       }
-  //       m_dirty = true;
-  //     });
-}
-
-ScopeComponent::~ScopeComponent() {
-  // m_processor_ref.clearBurstBufferCallback();
 }
 
 void ScopeComponent::renderOpenGL() {
@@ -671,7 +657,7 @@ void ScopeComponent::renderOpenGL() {
 
 void ScopeComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::blue);
-  g.drawRect(getLocalBounds());
+  // g.drawRect(getLocalBounds());
 }
 
 void ScopeComponent::resized() { RectComponent::resized(); }

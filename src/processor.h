@@ -177,8 +177,8 @@ public:
   // A rising edge across this value causes a trigger
   static constexpr float s_trigger_threshold = 1e-8f;
   // Length (in seconds) of the cooldown after a trigger.
-  // Chosen so that 20 Hz has 2 wavelengths visible
-  static constexpr float s_trigger_cooldown = 2.0f / 20;
+  // Chosen so that 20 Hz has 1 wavelength visible
+  static constexpr float s_trigger_cooldown = 1.0f / 20;
 
   TriggerHandler(GlynthProcessor& processor_ref, const int channel);
   void prepareToPlay(double sample_rate, int samples_per_block) override;

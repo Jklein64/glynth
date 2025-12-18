@@ -200,7 +200,6 @@ class ScopeComponent : public RectComponent {
 public:
   ScopeComponent(GlynthEditor& editor_ref, const std::string& program_id,
                  int channel);
-  ~ScopeComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
