@@ -37,6 +37,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   auto bg = std::make_unique<BackgroundComponent>(*this, "bg");
   auto lissajous = std::make_unique<LissajousComponent>(*this, "lissajous");
   auto scope_x = std::make_unique<ScopeComponent>(*this, "scope", 0);
+  auto scope_y = std::make_unique<ScopeComponent>(*this, "scope", 1);
   std::string_view fmt_hz = "{: >7.1f}{}";
   std::string_view fmt_q = "{: >9.6f}{}";
   std::string_view fmt_ms = "{: >8.2f}{}";
@@ -58,6 +59,8 @@ void GlynthEditor::newOpenGLContextCreated() {
   lissajous->setBounds(66, 146, 708, 125);
   addAndMakeVisible(scope_x.get());
   scope_x->setBounds(50 + 16 + 8, 50 + 16, 336, 64);
+  addAndMakeVisible(scope_y.get());
+  scope_y->setBounds(50 + 16 + 8 + 356, 50 + 16, 336, 64);
   // Draw the grid of knobs
   int x = 128, y = 287, w = 184, h = 56, ncols = 3;
   for (size_t i = 0; i < params.size(); i++) {
@@ -71,6 +74,7 @@ void GlynthEditor::newOpenGLContextCreated() {
   m_shader_components.push_back(std::move(bg));
   m_shader_components.push_back(std::move(lissajous));
   m_shader_components.push_back(std::move(scope_x));
+  m_shader_components.push_back(std::move(scope_y));
   for (auto& param : params) {
     m_shader_components.push_back(std::move(param));
   }
@@ -627,7 +631,6 @@ ScopeComponent::ScopeComponent(GlynthEditor& editor_ref,
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
   // m_processor_ref.setBurstBufferCallback(
   //     [this](std::vector<float>&& burst_buffer) {
   //       m_samples = std::move(burst_buffer);

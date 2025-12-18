@@ -34,7 +34,8 @@ GlynthProcessor::GlynthProcessor()
           juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
           juce::AudioParameterFloatAttributes().withLabel("ms")))),
       m_synth(*(new Synth(*this, m_attack_ms, m_decay_ms))),
-      m_trigger_handler_l(*(new TriggerHandler(*this, 0))) {
+      m_trigger_handler_x(*(new TriggerHandler(*this, 0))),
+      m_trigger_handler_y(*(new TriggerHandler(*this, 1))) {
 #ifdef GLYNTH_LOG_TO_FILE
   startTimerHz(1);
 #endif
@@ -49,7 +50,8 @@ GlynthProcessor::GlynthProcessor()
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
-  m_processors.emplace_back(&m_trigger_handler_l);
+  m_processors.emplace_back(&m_trigger_handler_x);
+  m_processors.emplace_back(&m_trigger_handler_y);
 
   m_font_manager.addFace("SplineSansMono-Bold");
   m_font_manager.addFace("SplineSansMono-Medium");
@@ -175,10 +177,11 @@ std::string_view GlynthProcessor::getOutlineText() { return m_outline_text; }
 
 TriggerHandler& GlynthProcessor::getTriggerHandler(int channel) {
   if (channel == 0) {
-    return m_trigger_handler_l;
+    return m_trigger_handler_x;
+  } else if (channel == 1) {
+    return m_trigger_handler_y;
   } else {
-    // TODO handle right channel == 1
-    throw GlynthError("Channel too high");
+    throw GlynthError(fmt::format("Channel {} is out of range", channel));
   }
 }
 
