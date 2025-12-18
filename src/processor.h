@@ -8,8 +8,6 @@
 #include <random>
 #include <readerwriterqueue.h>
 
-using BurstBufferCallback = std::function<void(std::vector<float>&&)>;
-
 class GlynthProcessor;
 class SubProcessor {
 public:
@@ -71,9 +69,7 @@ public:
   const Outline& getOutline();
   FT_Face getOutlineFace();
   std::string_view getOutlineText();
-
-  void setBurstBufferCallback(const BurstBufferCallback& callback);
-  void clearBurstBufferCallback();
+  TriggerHandler& getTriggerHandler(int channel);
 
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
@@ -187,7 +183,8 @@ public:
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
   void timerCallback() override;
-  void setBurstBufferCallback(std::optional<BurstBufferCallback>);
+  // Returns std::nullopt if the burst buffer hasn't changed
+  std::optional<std::vector<float>> getBurstBuffer();
 
 private:
   struct Block {
@@ -221,9 +218,8 @@ private:
   // Number of samples to store after a trigger
   size_t m_burst_length;
   std::vector<float> m_burst_buffer;
+  std::optional<std::vector<float>> m_burst_buffer_opt;
   bool m_triggered = false;
-  // Callback accepting full burst buffers
-  std::optional<BurstBufferCallback> m_callback;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TriggerHandler)
 };

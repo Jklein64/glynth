@@ -173,12 +173,13 @@ FT_Face GlynthProcessor::getOutlineFace() {
 
 std::string_view GlynthProcessor::getOutlineText() { return m_outline_text; }
 
-void GlynthProcessor::setBurstBufferCallback(
-    const BurstBufferCallback& callback) {
-  m_trigger_handler_l.setBurstBufferCallback(callback);
-}
-void GlynthProcessor::clearBurstBufferCallback() {
-  m_trigger_handler_l.setBurstBufferCallback(std::nullopt);
+TriggerHandler& GlynthProcessor::getTriggerHandler(int channel) {
+  if (channel == 0) {
+    return m_trigger_handler_l;
+  } else {
+    // TODO handle right channel == 1
+    throw GlynthError("Channel too high");
+  }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
@@ -361,9 +362,7 @@ void TriggerHandler::timerCallback() {
       if (m_triggered) {
         m_burst_buffer.push_back(x);
         if (m_burst_buffer.size() == m_burst_length) {
-          if (m_callback) {
-            (*m_callback)(std::move(m_burst_buffer));
-          }
+          m_burst_buffer_opt.emplace(std::move(m_burst_buffer));
           m_triggered = false;
           m_burst_buffer.clear();
         }
@@ -372,9 +371,14 @@ void TriggerHandler::timerCallback() {
   }
 }
 
-void TriggerHandler::setBurstBufferCallback(
-    std::optional<BurstBufferCallback> callback) {
-  m_callback = callback;
+std::optional<std::vector<float>> TriggerHandler::getBurstBuffer() {
+  if (m_burst_buffer_opt.has_value()) {
+    auto res = std::move(*m_burst_buffer_opt);
+    m_burst_buffer_opt = std::nullopt;
+    return res;
+  } else {
+    return std::nullopt;
+  }
 }
 
 Synth::Synth(GlynthProcessor& processor_ref,

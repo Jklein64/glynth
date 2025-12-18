@@ -198,13 +198,16 @@ private:
 
 class ScopeComponent : public RectComponent {
 public:
-  ScopeComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  ScopeComponent(GlynthEditor& editor_ref, const std::string& program_id,
+                 int channel);
   ~ScopeComponent() override;
   void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
   void resized() override;
 
 private:
+  TriggerHandler& m_trigger_handler_ref;
+
   GLuint m_texture;
   std::vector<float> m_samples;
   std::atomic_bool m_dirty = false;
