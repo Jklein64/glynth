@@ -179,8 +179,6 @@ private:
   float getTimeUniform();
 
   std::string m_content;
-  // Null when the outline shouldn't be displayed
-  // std::optional<Outline> m_outline;
   std::vector<glm::vec2> m_samples;
   size_t m_num_samples;
   // Bottom left corner of the last glyph
@@ -201,5 +199,13 @@ private:
 class ScopeComponent : public RectComponent {
 public:
   ScopeComponent(GlynthEditor& editor_ref, const std::string& program_id);
+  ~ScopeComponent() override;
+  void renderOpenGL() override;
   void paint(juce::Graphics& g) override;
+  void resized() override;
+
+private:
+  GLuint m_texture;
+  std::vector<float> m_samples;
+  std::atomic_bool m_dirty = false;
 };

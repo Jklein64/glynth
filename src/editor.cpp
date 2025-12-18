@@ -617,9 +617,49 @@ float LissajousComponent::getTimeUniform() {
 
 ScopeComponent::ScopeComponent(GlynthEditor& editor_ref,
                                const std::string& program_id)
-    : RectComponent(editor_ref, program_id) {}
+    : RectComponent(editor_ref, program_id) {
+  // Default so texture data isn't empty
+  // m_samples = {0, 0.1, 0.2, 0.3, 0.4, 0.5};
+  using namespace juce::gl;
+  glGenTextures(1, &m_texture);
+  glBindTexture(GL_TEXTURE_1D, m_texture);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  // glTexImage1D(GL_TEXTURE_1D, 0, GL_RED,
+  // static_cast<GLsizei>(m_samples.size()),
+  //              0, GL_RED, GL_FLOAT, m_samples.data());
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  m_processor_ref.setBurstBufferCallback(
+      [this](std::vector<float>&& burst_buffer) {
+        fmt::println(Logger::file, "Received burst buffer!");
+        m_samples = std::move(burst_buffer);
+        m_dirty = true;
+      });
+}
+
+ScopeComponent::~ScopeComponent() {
+  m_processor_ref.clearBurstBufferCallback();
+}
+
+void ScopeComponent::renderOpenGL() {
+  using namespace juce::gl;
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_1D, m_texture);
+  if (m_dirty) {
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RED,
+                 static_cast<GLsizei>(m_samples.size()), 0, GL_RED, GL_FLOAT,
+                 m_samples.data());
+    m_dirty = false;
+  }
+
+  RectComponent::renderOpenGL();
+}
 
 void ScopeComponent::paint(juce::Graphics& g) {
   g.setColour(juce::Colours::blue);
   g.drawRect(getLocalBounds());
 }
+
+void ScopeComponent::resized() { RectComponent::resized(); }

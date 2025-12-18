@@ -33,7 +33,8 @@ GlynthProcessor::GlynthProcessor()
           juce::ParameterID("decay", 1), "Decay (Env)",
           juce::NormalisableRange(0.0f, 10000.0f, 1e-4f, 0.15f), 100.0f,
           juce::AudioParameterFloatAttributes().withLabel("ms")))),
-      m_synth(*(new Synth(*this, m_attack_ms, m_decay_ms))) {
+      m_synth(*(new Synth(*this, m_attack_ms, m_decay_ms))),
+      m_trigger_handler_l(*(new TriggerHandler(*this, 0))) {
 #ifdef GLYNTH_LOG_TO_FILE
   startTimerHz(1);
 #endif
@@ -44,12 +45,11 @@ GlynthProcessor::GlynthProcessor()
   addParameter(&m_attack_ms);
   addParameter(&m_decay_ms);
 
-  // m_processors.emplace_back(new NoiseGenerator(*this));
   m_processors.emplace_back(&m_synth);
   m_processors.emplace_back(new HighPassFilter(*this, &m_hpf_freq, &m_hpf_res));
   m_processors.emplace_back(new LowPassFilter(*this, &m_lpf_freq, &m_lpf_res));
   m_processors.emplace_back(new CorruptionSilencer(*this));
-  m_processors.emplace_back(new TriggerHandler(*this, 0));
+  m_processors.emplace_back(&m_trigger_handler_l);
 
   m_font_manager.addFace("SplineSansMono-Bold");
   m_font_manager.addFace("SplineSansMono-Medium");
@@ -172,6 +172,14 @@ FT_Face GlynthProcessor::getOutlineFace() {
 }
 
 std::string_view GlynthProcessor::getOutlineText() { return m_outline_text; }
+
+void GlynthProcessor::setBurstBufferCallback(
+    const BurstBufferCallback& callback) {
+  m_trigger_handler_l.setBurstBufferCallback(callback);
+}
+void GlynthProcessor::clearBurstBufferCallback() {
+  m_trigger_handler_l.setBurstBufferCallback(std::nullopt);
+}
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new GlynthProcessor();
@@ -353,7 +361,9 @@ void TriggerHandler::timerCallback() {
       if (m_triggered) {
         m_burst_buffer.push_back(x);
         if (m_burst_buffer.size() == m_burst_length) {
-          fmt::println("Burst buffer full!");
+          if (m_callback) {
+            (*m_callback)(std::move(m_burst_buffer));
+          }
           // TODO move the burst buffer over to the editor
           m_triggered = false;
           m_burst_buffer.clear();
@@ -361,6 +371,11 @@ void TriggerHandler::timerCallback() {
       }
     }
   }
+}
+
+void TriggerHandler::setBurstBufferCallback(
+    std::optional<BurstBufferCallback> callback) {
+  m_callback = callback;
 }
 
 Synth::Synth(GlynthProcessor& processor_ref,

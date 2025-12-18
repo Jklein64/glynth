@@ -2,12 +2,13 @@
 
 #include "error.h"
 #include "font_manager.h"
-#include "logger.h"
 #include "outliner.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <random>
 #include <readerwriterqueue.h>
+
+using BurstBufferCallback = std::function<void(std::vector<float>&&)>;
 
 class GlynthProcessor;
 class SubProcessor {
@@ -27,6 +28,7 @@ protected:
 };
 
 class Synth;
+class TriggerHandler;
 
 class GlynthProcessor final : public juce::AudioProcessor, public juce::Timer {
 public:
@@ -70,6 +72,9 @@ public:
   FT_Face getOutlineFace();
   std::string_view getOutlineText();
 
+  void setBurstBufferCallback(const BurstBufferCallback& callback);
+  void clearBurstBufferCallback();
+
 private:
   inline static auto s_io_layouts = BusesProperties().withOutput(
       "Output", juce::AudioChannelSet::stereo(), true);
@@ -82,6 +87,7 @@ private:
   juce::AudioParameterFloat& m_decay_ms;
 
   Synth& m_synth;
+  TriggerHandler& m_trigger_handler_l;
   std::string m_outline_text = "Glynth";
   std::string m_outline_face = "SplineSansMono-Medium";
   Outline m_outline;
@@ -181,6 +187,7 @@ public:
   void processBlock(juce::AudioBuffer<float>& buffer,
                     juce::MidiBuffer& midi_messages) override;
   void timerCallback() override;
+  void setBurstBufferCallback(std::optional<BurstBufferCallback>);
 
 private:
   struct Block {
@@ -215,6 +222,8 @@ private:
   size_t m_burst_length;
   std::vector<float> m_burst_buffer;
   bool m_triggered = false;
+  // Callback accepting full burst buffers
+  std::optional<BurstBufferCallback> m_callback;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TriggerHandler)
 };
@@ -309,7 +318,7 @@ private:
   Wavetable m_wavetable;
   std::vector<SynthVoice> m_voices;
   double m_sample_rate;
-  float m_gain = 0.1f;
+  float m_gain = 0.5f;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Synth)
 };
